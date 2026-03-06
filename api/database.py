@@ -3,6 +3,11 @@ import sqlite3
 import os
 from contextlib import contextmanager
 from pathlib import Path
+import threading
+
+# Guard to prevent redundant schema init in same process
+_schema_initialized = False
+_schema_lock = threading.Lock()
 
 # Database file lives at project root
 # Using .resolve() ensures we find the actual file on Vercel
@@ -39,8 +44,14 @@ def get_connection() -> sqlite3.Connection:
             print("[DB INFO] Falling back to :memory: database (Stateless/Ephemeral)")
             conn = sqlite3.connect(":memory:")
             conn.row_factory = sqlite3.Row
-            # CRITICAL: If in-memory, we MUST init the schema immediately for this lifecycle
-            _init_schema(conn)
+            
+            # Use lock to prevent race conditions during cold start
+            global _schema_initialized
+            with _schema_lock:
+                if not _schema_initialized:
+                    print("[DB INFO] Initializing schema for new serverless instance...")
+                    _init_schema(conn)
+                    _schema_initialized = True
             return conn
         raise
 

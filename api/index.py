@@ -19,15 +19,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# Dual-style imports to handle Vercel's varied runtime paths
-try:
-    from api.database import init_db
-    from api.routes.api import router as api_router
-    from api.routes.debug import router as debug_router
-except (ImportError, ModuleNotFoundError):
-    from database import init_db
-    from routes.api import router as api_router
-    from routes.debug import router as debug_router
+# Avoid heavy top-level imports to prevent Vercel Cold Start timeouts
+# Routers and DB will be imported locally or later in the file
 
 app = FastAPI(title="Social Intelligence Dashboard API", version="2.0.0")
 
@@ -64,16 +57,17 @@ async def global_exception_handler(request, exc):
         }
     )
 
-# Initialize SQLite schema on startup (includes safe migrations)
-@app.on_event("startup")
-def startup():
-    try:
-        init_db()
-        print("[STARTUP] Database initialized.")
-    except Exception as e:
-        print(f"[STARTUP ERROR] DB Init failed: {e}")
+# Initialize SQLite schema lazily — we don't use @app.on_event("startup") 
+# as it can cause timeouts on Vercel Hobby tier.
 
-# Mount all routes
+# DEFERRED ROUTER INCLUSION
+try:
+    from api.routes.api import router as api_router
+    from api.routes.debug import router as debug_router
+except ImportError:
+    from routes.api import router as api_router
+    from routes.debug import router as debug_router
+
 app.include_router(api_router, prefix="/api")
 app.include_router(debug_router, prefix="/api/debug")
 

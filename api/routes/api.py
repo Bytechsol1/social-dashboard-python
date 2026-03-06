@@ -9,12 +9,12 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 
-from google_auth_oauthlib.flow import Flow
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse, HTMLResponse
+from pydantic import BaseModel
 
 from api.database import get_db, DB_PATH
 from api.encryption import encrypt, decrypt
-from api.services.manychat_service import ManyChatService, ManyChatAuthError
-from api.services.sync_engine import perform_sync
 
 router = APIRouter()
 
@@ -42,8 +42,9 @@ def _get_user_id(request: Request) -> str:
     return uid
 
 
-def _make_flow() -> Flow:
+def _make_flow() -> "Flow":
     """Build a Google OAuth Flow with consistent scopes + no PKCE."""
+    from google_auth_oauthlib.flow import Flow
     flow = Flow.from_client_config(
         {
             "web": {
@@ -135,6 +136,7 @@ class ManyChatKeyBody(BaseModel):
 
 @router.post("/auth/manychat")
 def save_manychat_key(body: ManyChatKeyBody, request: Request):
+    from api.services.manychat_service import ManyChatService
     user_id   = _get_user_id(request)
     encrypted = encrypt(body.key)
     with get_db() as conn:
@@ -152,6 +154,7 @@ def save_manychat_key(body: ManyChatKeyBody, request: Request):
 
 @router.post("/sync")
 async def trigger_sync(request: Request):
+    from api.services.sync_engine import perform_sync
     user_id = _get_user_id(request)
     try:
         result = await perform_sync(user_id)
@@ -162,6 +165,7 @@ async def trigger_sync(request: Request):
 
 @router.get("/sync/manychat")
 async def sync_manychat_route(request: Request):
+    from api.services.sync_engine import perform_sync
     user_id = _get_user_id(request)
     try:
         await perform_sync(user_id)
