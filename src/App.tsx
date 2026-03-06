@@ -841,9 +841,14 @@ export default function App() {
                           <div className="mt-6 pt-4 border-t border-slate-900/5 dark:border-white/5">
                             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Connect competitor channels to unlock competitive analysis</p>
                             <button className="mt-3 w-full py-2 border border-dashed border-slate-300 dark:border-white/10 rounded-xl text-xs font-black text-slate-500 hover:border-brand-yt/30 hover:text-brand-yt transition-all">+ Add Channel</button>
-                  </AnimatePresence>
-                </div>
-              )}
+                          </div>
+                        </Card>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
               {activePlatform === 'tiktok' && (
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
