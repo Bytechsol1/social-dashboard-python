@@ -4,15 +4,27 @@ import os
 from contextlib import contextmanager
 from pathlib import Path
 
-# Database file lives at project root (same as before)
+# Database file lives at project root
 DB_PATH = Path(__file__).parent.parent / "social_intel.db"
 
-
 def get_connection() -> sqlite3.Connection:
-    """Return a new SQLite connection with row_factory set."""
+    """Return a new SQLite connection with row_factory set.
+    Optimized for Vercel/stateless environments.
+    """
+    # If DATABASE_URL is provided, we should eventually switch to Postgres
+    # For now, let's just make SQLite stable on Vercel
+    is_vercel = os.environ.get("VERCEL") == "1"
+    
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
+    
+    # WAL mode is not supported on Vercel's read-only filesystem
+    if not is_vercel:
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+        except Exception:
+            pass
+    
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
@@ -33,10 +45,18 @@ def get_db():
 
 def init_db():
     """Create all tables if they don't exist (called on startup).
-    Also runs safe ALTER TABLE migrations for new columns.
+    Skips writes on Vercel if DB is missing to prevent startup crash.
     """
-    with get_db() as conn:
-        conn.executescript("""
+    is_vercel = os.environ.get("VERCEL") == "1"
+    db_exists = DB_PATH.exists()
+    
+    if is_vercel and not db_exists:
+        print("[DB WARNING] Database file not found on Vercel. Running in ephemeral mode.")
+        return # Skip initialization to prevent read-only filesystem error
+        
+    try:
+        with get_db() as conn:
+            conn.executescript("""
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
                 email TEXT UNIQUE,
