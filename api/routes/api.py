@@ -11,10 +11,10 @@ from pydantic import BaseModel
 
 from google_auth_oauthlib.flow import Flow
 
-from backend.database import get_db, DB_PATH
-from backend.encryption import encrypt, decrypt
-from backend.services.manychat_service import ManyChatService, ManyChatAuthError
-from backend.services.sync_engine import perform_sync
+from api.database import get_db, DB_PATH
+from api.encryption import encrypt, decrypt
+from api.services.manychat_service import ManyChatService, ManyChatAuthError
+from api.services.sync_engine import perform_sync
 
 router = APIRouter()
 

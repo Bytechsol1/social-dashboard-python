@@ -7,9 +7,9 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
-from backend.database import get_db
-from backend.encryption import decrypt
-from backend.services.manychat_service import ManyChatService, ManyChatAuthError
+from api.database import get_db
+from api.encryption import decrypt
+from api.services.manychat_service import ManyChatService, ManyChatAuthError
 
 GOOGLE_CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")

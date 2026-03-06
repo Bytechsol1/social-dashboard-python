@@ -16,9 +16,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.database import init_db
-from backend.routes.api import router as api_router
-from backend.routes.debug import router as debug_router
+from api.database import init_db
+from api.routes.api import router as api_router
+from api.routes.debug import router as debug_router
 
 app = FastAPI(title="Social Intelligence Dashboard API", version="2.0.0")
 
@@ -73,6 +73,6 @@ if __name__ == "__main__":
     import sys
     from pathlib import Path
 
-    # Add parent dir to sys.path so 'backend' can be found when running directly
+    # Add parent dir to sys.path so 'api' can be found when running directly
     sys.path.insert(0, str(Path(__file__).parent.parent))
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("api.index:app", host="0.0.0.0", port=8000, reload=True)

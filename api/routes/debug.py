@@ -1,7 +1,7 @@
 """Debug endpoints — gated by DEBUG_MODE=true environment variable."""
 import os
 from fastapi import APIRouter, HTTPException, Request
-from backend.services.sync_engine import get_youtube_debug_info, get_manychat_debug_info
+from api.services.sync_engine import get_youtube_debug_info, get_manychat_debug_info
 
 router = APIRouter()
 
