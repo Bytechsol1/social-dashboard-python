@@ -1,0 +1,130 @@
+"""SQLite database connection and schema initialization."""
+import sqlite3
+import os
+from contextlib import contextmanager
+from pathlib import Path
+
+# Database file lives at project root (same as before)
+DB_PATH = Path(__file__).parent.parent / "social_intel.db"
+
+
+def get_connection() -> sqlite3.Connection:
+    """Return a new SQLite connection with row_factory set."""
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    return conn
+
+
+@contextmanager
+def get_db():
+    """Context manager that yields a connection and auto-commits/closes."""
+    conn = get_connection()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def init_db():
+    """Create all tables if they don't exist (called on startup).
+    Also runs safe ALTER TABLE migrations for new columns.
+    """
+    with get_db() as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                email TEXT UNIQUE,
+                yt_refresh_token TEXT,
+                manychat_key TEXT,
+                youtube_channel_id TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS metrics (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                date TEXT,
+                source TEXT,
+                metric_name TEXT,
+                dimension TEXT DEFAULT 'none',
+                value REAL,
+                UNIQUE(user_id, date, source, metric_name, dimension)
+            );
+
+            CREATE TABLE IF NOT EXISTS manychat_interactions (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                subscriber_id TEXT,
+                type TEXT,
+                details TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS sync_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT,
+                status TEXT,
+                message TEXT,
+                flow_id TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS manychat_automations (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                name TEXT,
+                status TEXT,
+                runs INTEGER DEFAULT 0,
+                clicks INTEGER DEFAULT 0,
+                ctr REAL DEFAULT 0,
+                last_modified TEXT,
+                synced_at DATETIME,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS manychat_pings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT,
+                automation_id TEXT,
+                type TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS youtube_videos (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                title TEXT,
+                published_at TEXT,
+                view_count INTEGER DEFAULT 0,
+                like_count INTEGER DEFAULT 0,
+                comment_count INTEGER DEFAULT 0,
+                thumbnail_url TEXT,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+    # ── Safe migrations for existing databases ─────────────────────────────
+    _safe_migrate()
+
+
+def _safe_migrate():
+    """Add new columns to existing tables without dropping data."""
+    migrations = [
+        ("users",                  "youtube_channel_id", "TEXT"),
+        ("sync_logs",              "flow_id",            "TEXT"),
+        ("manychat_automations",   "synced_at",          "DATETIME"),
+        ("manychat_automations",   "clicks",             "INTEGER DEFAULT 0"),
+    ]
+    with get_db() as conn:
+        for table, column, col_type in migrations:
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+                print(f"[DB MIGRATE] Added {table}.{column}")
+            except Exception:
+                pass  # Column already exists — fine

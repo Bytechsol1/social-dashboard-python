@@ -1,0 +1,36 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# SQLite database (contains private tokens & sync data)
+*.db
+*.db-shm
+*.db-wal
+
+# Temp test/debug scripts
+test_*.ts
+test_*.cjs
+test_*.js
+
+# ManyChat API exports (local only)
+manychat.json
+manychat_swagger.html
+manychat_swagger.json
+metadata.json
+
+# Local Diagnostic / Setup Scripts
+check_*.py
+seed_*.py
+debug_*.py
+fix_*.py
+sync_real_data.py
+test_ping.py
+migrate_theme.py
+backend.log
+frontend.log
+oauth_error.log
