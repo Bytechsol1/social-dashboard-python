@@ -1,0 +1,19 @@
+# Exclude development and legacy files from Vercel
+venv/
+.venv/
+env/
+backend/
+check_*.py
+seed_*.py
+debug_*.py
+fix_*.py
+sync_real_data.py
+test_ping.py
+migrate_theme.py
+*.log
+*.db
+*.db-shm
+*.db-wal
+**/__pycache__/
+node_modules/
+dist/
