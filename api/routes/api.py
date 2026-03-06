@@ -123,8 +123,7 @@ def youtube_callback(code: str, request: Request):
         import traceback
         tb = traceback.format_exc()
         print(f"[AUTH] YouTube callback error: {e}\n{tb}")
-        with open("oauth_error.log", "a") as f:
-            f.write(f"[{datetime.now(timezone.utc)}] {request.url}\n{tb}\n---\n")
+        # Removed file logging due to Vercel read-only filesystem
         raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
 
 
