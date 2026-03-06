@@ -33,4 +33,13 @@ test_ping.py
 migrate_theme.py
 backend.log
 frontend.log
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# OAuth error log
 oauth_error.log
