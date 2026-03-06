@@ -42,8 +42,22 @@ function cn(...inputs: ClassValue[]) {
 
 // --- COMPONENTS ---
 
+const cardClass = "glass-card p-6";
+
+const TikTokIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.13-1.47V18.77a6.738 6.738 0 01-1.9 4.63c-1.32 1.34-3.21 2.1-5.11 2.1-1.9 0-3.79-.76-5.11-2.1A6.703 6.703 0 014.28 18.77c0-1.89.76-3.77 2.09-5.1 1.32-1.34 3.21-2.1 5.11-2.1.37 0 .73.03 1.09.1v4.02c-.36-.07-.72-.1-1.1-.1-1.11 0-2.22.44-3 1.23a3.912 3.912 0 00-1.24 3c0 .82.33 1.63.92 2.22.58.6 1.4.92 2.22.92.83 0 1.63-.33 2.22-.92.6-.59.92-1.4.92-2.22V.02z" />
+  </svg>
+);
+
+const XIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932 6.064-6.932zm-1.292 19.494h2.039L6.486 3.24H4.298l13.311 17.407z" />
+  </svg>
+);
+
 const Card = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <div className={cn("glass-card p-6", className)}>
+  <div className={cn(cardClass, className)}>
     {children}
   </div>
 );
@@ -51,7 +65,13 @@ const Card = ({ children, className }: { children: React.ReactNode; className?: 
 const StatCard = ({ title, value, icon: Icon, delta, unit = "", color = "brand-yt" }: any) => (
   <Card className="flex flex-col gap-4 relative overflow-hidden group">
     <div className="flex justify-between items-start">
-      <div className={cn("p-2 rounded-xl border", color === 'brand-yt' ? 'bg-brand-yt/10 border-brand-yt/20 text-brand-yt' : 'bg-brand-mc/10 border-brand-mc/20 text-brand-mc')}>
+      <div className={cn(
+        "p-2 rounded-xl border",
+        color === 'brand-yt' ? 'bg-brand-yt/10 border-brand-yt/20 text-brand-yt' :
+        color === 'brand-mc' ? 'bg-brand-mc/10 border-brand-mc/20 text-brand-mc' :
+        color === 'brand-tiktok' ? 'bg-[#00f2ea]/10 border-[#00f2ea]/20 text-[#00f2ea]' :
+        'bg-[#1DA1F2]/10 border-[#1DA1F2]/20 text-[#1DA1F2]'
+      )}>
         <Icon className="w-5 h-5" />
       </div>
       {delta !== undefined && (
@@ -133,7 +153,7 @@ export default function App() {
   const automationsByMonth = React.useMemo(() => {
     if (!data?.automations) return [];
     const counts: Record<string, number> = {};
-    
+
     // Create a list of the last 6 months to ensure they always appear in order
     const months: string[] = [];
     for (let i = 5; i >= 0; i--) {
@@ -153,12 +173,12 @@ export default function App() {
         const day = auto.id.substring(13, 15);
         dateObj = new Date(`${year}-${month}-${day}`);
       }
-      
+
       const ts = (dateObj && !isNaN(dateObj.getTime())) ? dateObj : (auto.updated_at || auto.last_modified || auto.synced_at);
       if (!ts) return;
       const d = new Date(ts);
       if (isNaN(d.getTime())) return;
-      
+
       const monthStr = d.toLocaleString('default', { month: 'short', year: '2-digit' });
       if (counts[monthStr] !== undefined) {
         counts[monthStr]++;
@@ -298,7 +318,7 @@ export default function App() {
           <button
             onClick={() => { setShowSettings(false); setActivePlatform('overview'); }}
             className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'overview' ? "bg-slate-900/10 dark:bg-white/10 text-emerald-400 shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
-            title="Unified Command"
+            title="Social Intelligence"
           >
             <LayoutDashboard className="w-6 h-6" />
             {!showSettings && activePlatform === 'overview' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-emerald-400/20 blur-xl -z-10" />}
@@ -314,15 +334,15 @@ export default function App() {
             <Youtube className="w-6 h-6" />
             {!showSettings && activePlatform === 'youtube' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-brand-yt/20 blur-xl -z-10" />}
           </button>
-          
+
           <button
             onClick={() => { setShowSettings(false); setActivePlatform('tiktok'); }}
             className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'tiktok' ? "bg-slate-900/10 dark:bg-white/10 text-[#00f2ea] shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
             title="TikTok Analytics"
           >
             <div className="relative">
-               <Zap className="w-6 h-6" />
-               <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[#ff0050] rounded-full animate-pulse" />
+              <TikTokIcon className="w-6 h-6" />
+              <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[#ff0050] rounded-full animate-pulse" />
             </div>
             {!showSettings && activePlatform === 'tiktok' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-[#00f2ea]/20 blur-xl -z-10" />}
           </button>
@@ -332,7 +352,7 @@ export default function App() {
             className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'twitter' ? "bg-slate-900/10 dark:bg-white/10 text-[#1DA1F2] shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
             title="Twitter/X Reach"
           >
-            <Target className="w-6 h-6" />
+            <XIcon className="w-6 h-6" />
             {!showSettings && activePlatform === 'twitter' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-[#1DA1F2]/20 blur-xl -z-10" />}
           </button>
 
@@ -372,7 +392,7 @@ export default function App() {
         <header className="h-20 border-b border-slate-900/5 dark:border-white/5 flex items-center justify-between px-8 sticky top-0 bg-white/80 dark:bg-[#0B0E14]/80 backdrop-blur-md z-40">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2 uppercase">
-              {activePlatform === 'overview' && "Unified Command"}
+              {activePlatform === 'overview' && "Social Intelligence"}
               {activePlatform === 'youtube' && "YouTube Intelligence"}
               {activePlatform === 'tiktok' && "TikTok Hub"}
               {activePlatform === 'twitter' && "Twitter Reach"}
@@ -380,16 +400,17 @@ export default function App() {
               <span className={cn(
                 "w-2 h-2 rounded-full",
                 activePlatform === 'overview' ? 'bg-emerald-400' :
-                activePlatform === 'youtube' ? 'bg-brand-yt' :
-                activePlatform === 'tiktok' ? 'bg-[#00f2ea]' : 
-                activePlatform === 'twitter' ? 'bg-[#1DA1F2]' : 'bg-brand-mc'
+                  activePlatform === 'youtube' ? 'bg-brand-yt' :
+                    activePlatform === 'tiktok' ? 'bg-[#00f2ea]' :
+                      activePlatform === 'twitter' ? 'bg-[#1DA1F2]' : 'bg-brand-mc'
               )} />
             </h1>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">
-              {activePlatform === 'overview' ? 'Central Intelligence Agency' :
-               activePlatform === 'youtube' ? 'Growth Command Center' : 
-               activePlatform === 'tiktok' ? 'Engagement Matrix' : 'Audience Reach Protocol'}
-            </p>
+            {activePlatform !== 'overview' && (
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">
+                {activePlatform === 'youtube' ? 'Growth Command Center' :
+                  activePlatform === 'tiktok' ? 'Engagement Matrix' : 'Audience Reach Protocol'}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -408,80 +429,80 @@ export default function App() {
             <>
               {activePlatform === 'overview' && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                      <Card className="border-brand-yt/20 bg-brand-yt/5">
-                         <div className="flex justify-between items-center mb-4">
-                            <Youtube className="w-5 h-5 text-brand-yt" />
-                            <span className="text-[10px] font-black text-brand-yt uppercase tracking-widest">YouTube</span>
-                         </div>
-                         <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.subscribers)}</p>
-                         <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Subscribers</p>
-                      </Card>
-                      <Card className="border-[#00f2ea]/20 bg-[#00f2ea]/5">
-                         <div className="flex justify-between items-center mb-4">
-                            <Zap className="w-5 h-5 text-[#00f2ea]" />
-                            <span className="text-[10px] font-black text-[#00f2ea] uppercase tracking-widest">TikTok</span>
-                         </div>
-                         <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">85.2K</p>
-                         <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Followers</p>
-                      </Card>
-                      <Card className="border-[#1DA1F2]/20 bg-[#1DA1F2]/5">
-                         <div className="flex justify-between items-center mb-4">
-                            <Target className="w-5 h-5 text-[#1DA1F2]" />
-                            <span className="text-[10px] font-black text-[#1DA1F2] uppercase tracking-widest">Twitter</span>
-                         </div>
-                         <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">142K</p>
-                         <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Impressions (30d)</p>
-                      </Card>
-                      <Card className="border-brand-mc/20 bg-brand-mc/5">
-                         <div className="flex justify-between items-center mb-4">
-                            <MessageSquare className="w-5 h-5 text-brand-mc" />
-                            <span className="text-[10px] font-black text-brand-mc uppercase tracking-widest">ManyChat</span>
-                         </div>
-                         <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.manychat_subscribers)}</p>
-                         <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Contacts</p>
-                      </Card>
-                   </div>
-                   
-                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      <Card className="p-8 bg-gradient-to-br from-emerald-500/[0.03] to-transparent">
-                         <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight mb-8">Growth Velocity</h3>
-                         <div className="h-[300px] w-full">
-                            {data?.chartData?.length > 0 ? (
-                               <ResponsiveContainer width="100%" height="100%">
-                                  <AreaChart data={data.chartData}>
-                                     <defs>
-                                        <linearGradient id="ovGrad" x1="0" y1="0" x2="0" y2="1">
-                                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                           <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                        </linearGradient>
-                                     </defs>
-                                     <Area type="monotone" dataKey="youtube_views" stroke="#10b981" strokeWidth={3} fill="url(#ovGrad)" />
-                                     <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} />
-                                  </AreaChart>
-                               </ResponsiveContainer>
-                            ) : (
-                               <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-3xl">
-                                  <TrendingUp className="w-12 h-12 text-emerald-400 opacity-20" />
-                               </div>
-                            )}
-                         </div>
-                      </Card>
-                      <Card className="p-8 bg-gradient-to-br from-brand-mc/[0.03] to-transparent">
-                         <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight mb-8">Automation Pulse</h3>
-                         <div className="space-y-6">
-                            {(data?.automations || []).slice(0, 5).map((auto: any) => (
-                               <div key={auto.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-brand-mc/30 transition-all">
-                                  <div className="flex flex-col">
-                                     <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-brand-mc transition-colors">{auto.name}</span>
-                                     <span className="text-[9px] font-bold text-slate-600 uppercase mt-1 tracking-widest">{fmtDate(auto.synced_at)}</span>
-                                  </div>
-                                  <ChevronRight className="w-4 h-4 text-slate-700" />
-                               </div>
-                            ))}
-                         </div>
-                      </Card>
-                   </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <Card className="border-brand-yt/20 bg-brand-yt/5">
+                      <div className="flex justify-between items-center mb-4">
+                        <Youtube className="w-5 h-5 text-brand-yt" />
+                        <span className="text-[10px] font-black text-brand-yt uppercase tracking-widest">YouTube</span>
+                      </div>
+                      <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.subscribers)}</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Subscribers</p>
+                    </Card>
+                    <Card className="border-[#00f2ea]/20 bg-[#00f2ea]/5">
+                      <div className="flex justify-between items-center mb-4">
+                        <TikTokIcon className="w-5 h-5 text-[#00f2ea]" />
+                        <span className="text-[10px] font-black text-[#00f2ea] uppercase tracking-widest">TikTok</span>
+                      </div>
+                      <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">85.2K</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Followers</p>
+                    </Card>
+                    <Card className="border-[#1DA1F2]/20 bg-[#1DA1F2]/5">
+                      <div className="flex justify-between items-center mb-4">
+                        <XIcon className="w-5 h-5 text-[#1DA1F2]" />
+                        <span className="text-[10px] font-black text-[#1DA1F2] uppercase tracking-widest">Twitter</span>
+                      </div>
+                      <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">142K</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Impressions (30d)</p>
+                    </Card>
+                    <Card className="border-brand-mc/20 bg-brand-mc/5">
+                      <div className="flex justify-between items-center mb-4">
+                        <MessageSquare className="w-5 h-5 text-brand-mc" />
+                        <span className="text-[10px] font-black text-brand-mc uppercase tracking-widest">ManyChat</span>
+                      </div>
+                      <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.manychat_subscribers)}</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Contacts</p>
+                    </Card>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <Card className="p-8 bg-gradient-to-br from-emerald-500/[0.03] to-transparent">
+                      <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight mb-8">Growth Velocity</h3>
+                      <div className="h-[300px] w-full">
+                        {data?.chartData?.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={data.chartData}>
+                              <defs>
+                                <linearGradient id="ovGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <Area type="monotone" dataKey="youtube_views" stroke="#10b981" strokeWidth={3} fill="url(#ovGrad)" />
+                              <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-3xl">
+                            <TrendingUp className="w-12 h-12 text-emerald-400 opacity-20" />
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                    <Card className="p-8 bg-gradient-to-br from-brand-mc/[0.03] to-transparent">
+                      <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight mb-8">Automation Pulse</h3>
+                      <div className="space-y-6">
+                        {(data?.automations || []).slice(0, 5).map((auto: any) => (
+                          <div key={auto.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-brand-mc/30 transition-all">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-brand-mc transition-colors">{auto.name}</span>
+                              <span className="text-[9px] font-bold text-slate-600 uppercase mt-1 tracking-widest">{fmtDate(auto.synced_at)}</span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-700" />
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  </div>
                 </motion.div>
               )}
 
@@ -507,482 +528,482 @@ export default function App() {
                     </div>
                   </div>
 
-                <AnimatePresence mode="wait">
-                  {activeTab === 'overview' && (
-                    <motion.div
-                      key="overview"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="space-y-8"
-                    >
-                      {/* Overview Stats */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <StatCard title="Total Views" value={fmt(data?.summary?.total_views)} icon={Youtube} delta={12} color="brand-yt" />
-                        <StatCard title="Revenue (30d)" value={fmtMoney(data?.summary?.revenue)} icon={DollarSign} color="brand-yt" />
-                        <StatCard title="Total Subs" value={fmt(data?.summary?.subscribers)} icon={Users} delta={2} color="brand-yt" />
-                        <StatCard
-                          title="Total Watch Time"
-                          value={formatWatchTime(data?.summary?.watch_time_minutes)}
-                          icon={Clock}
-                          delta={5}
-                          color="brand-yt"
-                        />
-                      </div>
-
-                      {/* Charts Grid */}
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <Card className="lg:col-span-2">
-                          <div className="flex justify-between items-center mb-8">
-                            <div>
-                              <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Growth Velocity</h3>
-                              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Daily interactive breakdown</p>
-                            </div>
-                            <div className="flex gap-2">
-                              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/5 dark:bg-white/5 rounded-lg border border-slate-900/5 dark:border-white/5 text-[10px] font-bold">
-                                <span className="w-2 h-2 rounded-full bg-brand-yt shadow-[0_0_8px_#FF0000]" /> YouTube Views
-                              </div>
-                            </div>
-                          </div>
-                          <div className="h-[350px] w-full">
-                            {data?.chartData?.length > 0 ? (
-                              <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={data?.chartData}>
-                                  <defs>
-                                    <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="5%" stopColor="#FF0000" stopOpacity={0.3} />
-                                      <stop offset="95%" stopColor="#FF0000" stopOpacity={0} />
-                                    </linearGradient>
-                                  </defs>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                  <XAxis dataKey="date" hide />
-                                  <YAxis hide />
-                                  <Tooltip
-                                    contentStyle={{ backgroundColor: '#161B22', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)' }}
-                                    itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-                                  />
-                                  <Area type="monotone" dataKey="youtube_views" stroke="#FF0000" strokeWidth={4} fillOpacity={1} fill="url(#colorViews)" />
-                                </AreaChart>
-                              </ResponsiveContainer>
-                            ) : (
-                              <div className="h-full flex flex-col items-center justify-center gap-4 rounded-2xl overflow-hidden relative">
-                                <div className="absolute inset-0 bg-gradient-to-br from-brand-yt/5 via-transparent to-blue-500/5 animate-pulse" />
-                                <BarChart3 className="w-12 h-12 text-slate-300 dark:text-slate-700 relative z-10" />
-                                <div className="text-center relative z-10">
-                                  <p className="text-sm font-black text-slate-900 dark:text-white">Your growth story starts here.</p>
-                                  <p className="text-xs text-slate-500 mt-1">First sync in progress — click SYNC DATA to begin.</p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </Card>
-
-                        <div className="space-y-6">
-                          <Card className="bg-gradient-to-br from-brand-yt to-brand-yt/40 border-none shadow-[0_0_40px_rgba(255,0,0,0.15)] text-white">
-                            <div className="flex justify-between items-start mb-6">
-                              <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
-                                <Zap className="w-6 h-6 text-white" />
-                              </div>
-                              <div className="px-3 py-1 bg-white/20 rounded-full text-[10px] font-black tracking-widest text-white">LIVE</div>
-                            </div>
-                            <h3 className="text-4xl font-black tracking-tighter text-white">{data?.summary?.total_videos || 0}</h3>
-                            <p className="text-xs font-bold text-white/80 uppercase tracking-widest mt-1">Total Published Content</p>
-                            <div className="mt-8 flex justify-between items-end border-t border-white/20 pt-4">
-                              <div>
-                                <p className="text-[10px] font-bold text-white/60">AVG DURATION</p>
-                                <p className="text-lg font-black text-white">{Math.round((data?.summary?.avg_duration || 0) / 60)}m</p>
-                              </div>
-                              <ChevronRight className="w-5 h-5 opacity-40" />
-                            </div>
-                          </Card>
-
-                          <Card className="border-slate-900/5 dark:border-white/5 bg-white/[0.02]">
-                            <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-4">Subscriber Retention</h3>
-                            <div className="space-y-4">
-                              <div className="flex justify-between items-end">
-                                <div>
-                                  <p className="text-[10px] font-bold text-slate-500">GAINED</p>
-                                  <p className="text-xl font-black text-emerald-400">+{data?.summary?.subs_gained || 0}</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-[10px] font-bold text-slate-500">LOST</p>
-                                  <p className="text-xl font-black text-rose-400">-{data?.summary?.subs_lost || 0}</p>
-                                </div>
-                              </div>
-                              <div className="h-1.5 w-full bg-slate-900/5 dark:bg-white/5 rounded-full overflow-hidden flex">
-                                <div className="h-full bg-emerald-400 shadow-[0_0_8px_#10b981]" style={{ width: '85%' }} />
-                                <div className="h-full bg-rose-400 shadow-[0_0_8px_#f43f5e]" style={{ width: '15%' }} />
-                              </div>
-                            </div>
-                          </Card>
+                  <AnimatePresence mode="wait">
+                    {activeTab === 'overview' && (
+                      <motion.div
+                        key="overview"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-8"
+                      >
+                        {/* Overview Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                          <StatCard title="Total Views" value={fmt(data?.summary?.total_views)} icon={Youtube} delta={12} color="brand-yt" />
+                          <StatCard title="Revenue (30d)" value={fmtMoney(data?.summary?.revenue)} icon={DollarSign} color="brand-yt" />
+                          <StatCard title="Total Subs" value={fmt(data?.summary?.subscribers)} icon={Users} delta={2} color="brand-yt" />
+                          <StatCard
+                            title="Total Watch Time"
+                            value={formatWatchTime(data?.summary?.watch_time_minutes)}
+                            icon={Clock}
+                            delta={5}
+                            color="brand-yt"
+                          />
                         </div>
-                      </div>
-                    </motion.div>
-                  )}
 
-                  {activeTab === 'content' && (
-                    <motion.div
-                      key="content"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                    >
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          <Card className="p-6">
-                            <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight mb-8">How viewers find your videos</h3>
-                            <div className="space-y-6">
-                              {[
-                                { label: 'Browse features', percent: 33.3 },
-                                { label: 'Channel pages', percent: 33.3 },
-                                { label: 'Suggested videos', percent: 33.3 },
-                                { label: 'YouTube search', percent: 0.1 }
-                              ].map(source => (
-                                <div key={source.label} className="flex items-center justify-between text-sm">
-                                  <span className="font-bold text-slate-600 dark:text-slate-300">{source.label}</span>
-                                  <div className="flex items-center gap-4 w-1/2">
-                                    <div className="flex-1 h-2 bg-slate-900/5 dark:bg-white/5 rounded-full overflow-hidden">
-                                      <div className="h-full bg-[#8b5cf6] rounded-full" style={{ width: `${source.percent}%` }} />
-                                    </div>
-                                    <span className="font-black text-slate-900 dark:text-white tabular-nums min-w-[40px] text-right">{source.percent.toFixed(1)}%</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </Card>
-
-                          <Card className="p-0 overflow-hidden">
-                            <div className="p-6 border-b border-slate-900/5 dark:border-white/5 flex justify-between items-center bg-white/[0.01]">
+                        {/* Charts Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                          <Card className="lg:col-span-2">
+                            <div className="flex justify-between items-center mb-8">
                               <div>
-                                <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Views Over Time</h3>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Recent video performance</p>
+                                <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Growth Velocity</h3>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Daily interactive breakdown</p>
+                              </div>
+                              <div className="flex gap-2">
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/5 dark:bg-white/5 rounded-lg border border-slate-900/5 dark:border-white/5 text-[10px] font-bold">
+                                  <span className="w-2 h-2 rounded-full bg-brand-yt shadow-[0_0_8px_#FF0000]" /> YouTube Views
+                                </div>
                               </div>
                             </div>
-                            <div className="h-[250px] p-6">
-                              {data?.videos?.length > 0 ? (
+                            <div className="h-[350px] w-full">
+                              {data?.chartData?.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
-                                  <AreaChart data={[...data.videos].reverse().map((v: any) => ({ name: v.title.substring(0, 20) + '...', views: v.view_count }))}>
+                                  <AreaChart data={data?.chartData}>
                                     <defs>
-                                      <linearGradient id="colorYtViews" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.5} />
-                                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                      <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#FF0000" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#FF0000" stopOpacity={0} />
                                       </linearGradient>
                                     </defs>
-                                    <XAxis dataKey="name" hide />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="date" hide />
                                     <YAxis hide />
                                     <Tooltip
-                                      contentStyle={{ backgroundColor: '#161B22', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}
+                                      contentStyle={{ backgroundColor: '#161B22', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)' }}
                                       itemStyle={{ color: '#fff', fontWeight: 'bold' }}
                                     />
-                                    <Area type="monotone" dataKey="views" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorYtViews)" />
+                                    <Area type="monotone" dataKey="youtube_views" stroke="#FF0000" strokeWidth={4} fillOpacity={1} fill="url(#colorViews)" />
                                   </AreaChart>
                                 </ResponsiveContainer>
                               ) : (
-                                <div className="h-full flex items-center justify-center text-slate-600 text-xs font-bold tracking-widest uppercase">No Video Data Found</div>
+                                <div className="h-full flex flex-col items-center justify-center gap-4 rounded-2xl overflow-hidden relative">
+                                  <div className="absolute inset-0 bg-gradient-to-br from-brand-yt/5 via-transparent to-blue-500/5 animate-pulse" />
+                                  <BarChart3 className="w-12 h-12 text-slate-300 dark:text-slate-700 relative z-10" />
+                                  <div className="text-center relative z-10">
+                                    <p className="text-sm font-black text-slate-900 dark:text-white">Your growth story starts here.</p>
+                                    <p className="text-xs text-slate-500 mt-1">First sync in progress — click SYNC DATA to begin.</p>
+                                  </div>
+                                </div>
                               )}
+                            </div>
+                          </Card>
+
+                          <div className="space-y-6">
+                            <Card className="bg-gradient-to-br from-brand-yt to-brand-yt/40 border-none shadow-[0_0_40px_rgba(255,0,0,0.15)] text-white">
+                              <div className="flex justify-between items-start mb-6">
+                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
+                                  <Zap className="w-6 h-6 text-white" />
+                                </div>
+                                <div className="px-3 py-1 bg-white/20 rounded-full text-[10px] font-black tracking-widest text-white">LIVE</div>
+                              </div>
+                              <h3 className="text-4xl font-black tracking-tighter text-white">{data?.summary?.total_videos || 0}</h3>
+                              <p className="text-xs font-bold text-white/80 uppercase tracking-widest mt-1">Total Published Content</p>
+                              <div className="mt-8 flex justify-between items-end border-t border-white/20 pt-4">
+                                <div>
+                                  <p className="text-[10px] font-bold text-white/60">AVG DURATION</p>
+                                  <p className="text-lg font-black text-white">{Math.round((data?.summary?.avg_duration || 0) / 60)}m</p>
+                                </div>
+                                <ChevronRight className="w-5 h-5 opacity-40" />
+                              </div>
+                            </Card>
+
+                            <Card className="border-slate-900/5 dark:border-white/5 bg-white/[0.02]">
+                              <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-4">Subscriber Retention</h3>
+                              <div className="space-y-4">
+                                <div className="flex justify-between items-end">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-slate-500">GAINED</p>
+                                    <p className="text-xl font-black text-emerald-400">+{data?.summary?.subs_gained || 0}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[10px] font-bold text-slate-500">LOST</p>
+                                    <p className="text-xl font-black text-rose-400">-{data?.summary?.subs_lost || 0}</p>
+                                  </div>
+                                </div>
+                                <div className="h-1.5 w-full bg-slate-900/5 dark:bg-white/5 rounded-full overflow-hidden flex">
+                                  <div className="h-full bg-emerald-400 shadow-[0_0_8px_#10b981]" style={{ width: '85%' }} />
+                                  <div className="h-full bg-rose-400 shadow-[0_0_8px_#f43f5e]" style={{ width: '15%' }} />
+                                </div>
+                              </div>
+                            </Card>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {activeTab === 'content' && (
+                      <motion.div
+                        key="content"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                      >
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <Card className="p-6">
+                              <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight mb-8">How viewers find your videos</h3>
+                              <div className="space-y-6">
+                                {[
+                                  { label: 'Browse features', percent: 33.3 },
+                                  { label: 'Channel pages', percent: 33.3 },
+                                  { label: 'Suggested videos', percent: 33.3 },
+                                  { label: 'YouTube search', percent: 0.1 }
+                                ].map(source => (
+                                  <div key={source.label} className="flex items-center justify-between text-sm">
+                                    <span className="font-bold text-slate-600 dark:text-slate-300">{source.label}</span>
+                                    <div className="flex items-center gap-4 w-1/2">
+                                      <div className="flex-1 h-2 bg-slate-900/5 dark:bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-full bg-[#8b5cf6] rounded-full" style={{ width: `${source.percent}%` }} />
+                                      </div>
+                                      <span className="font-black text-slate-900 dark:text-white tabular-nums min-w-[40px] text-right">{source.percent.toFixed(1)}%</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </Card>
+
+                            <Card className="p-0 overflow-hidden">
+                              <div className="p-6 border-b border-slate-900/5 dark:border-white/5 flex justify-between items-center bg-white/[0.01]">
+                                <div>
+                                  <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Views Over Time</h3>
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Recent video performance</p>
+                                </div>
+                              </div>
+                              <div className="h-[250px] p-6">
+                                {data?.videos?.length > 0 ? (
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={[...data.videos].reverse().map((v: any) => ({ name: v.title.substring(0, 20) + '...', views: v.view_count }))}>
+                                      <defs>
+                                        <linearGradient id="colorYtViews" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.5} />
+                                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                        </linearGradient>
+                                      </defs>
+                                      <XAxis dataKey="name" hide />
+                                      <YAxis hide />
+                                      <Tooltip
+                                        contentStyle={{ backgroundColor: '#161B22', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}
+                                        itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                                      />
+                                      <Area type="monotone" dataKey="views" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorYtViews)" />
+                                    </AreaChart>
+                                  </ResponsiveContainer>
+                                ) : (
+                                  <div className="h-full flex items-center justify-center text-slate-600 text-xs font-bold tracking-widest uppercase">No Video Data Found</div>
+                                )}
+                              </div>
+                            </Card>
+                          </div>
+
+                          <Card className="p-0 overflow-hidden">
+                            <div className="p-8 border-b border-slate-900/5 dark:border-white/5 flex justify-between items-center bg-white/[0.01]">
+                              <div>
+                                <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Content Performance</h3>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Detailed video analytics breakdown</p>
+                              </div>
+                              <button className="text-xs font-bold text-brand-yt hover:underline uppercase tracking-widest">Advanced Engine</button>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left">
+                                <thead>
+                                  <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-900/5 dark:border-white/5">
+                                    <th className="px-8 py-4">Video Details</th>
+                                    <th className="px-6 py-4 text-center">Views</th>
+                                    <th className="px-6 py-4 text-center">Comments</th>
+                                    <th className="px-6 py-4">Likes (vs dislikes)</th>
+                                    <th className="px-6 py-4 text-right">Published</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-900/5 dark:divide-white/5">
+                                  {data?.videos?.length > 0 ? (
+                                    data.videos.map((vid: any) => (
+                                      <tr key={vid.id} className="hover:bg-white/[0.02] transition-colors group">
+                                        <td className="px-8 py-5">
+                                          <div className="flex items-center gap-4">
+                                            <img src={vid.thumbnail_url} className="w-24 h-14 rounded-lg object-cover border border-slate-900/10 dark:border-white/10 group-hover:scale-105 transition-transform" />
+                                            <div className="flex flex-col max-w-[300px]">
+                                              <span className="text-sm font-bold text-slate-900 dark:text-white line-clamp-2 truncate">{vid.title}</span>
+                                              <span className="text-[10px] text-slate-500 mt-1 uppercase font-bold tracking-tighter">ID: {vid.id}</span>
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td className="px-6 py-5 text-center text-sm font-black text-slate-900 dark:text-white">{vid.view_count?.toLocaleString() || 0}</td>
+                                        <td className="px-6 py-5 text-center text-sm font-bold text-slate-600 dark:text-slate-400">{vid.comment_count?.toLocaleString() || 0}</td>
+                                        <td className="px-6 py-5">
+                                          <div className="flex flex-col gap-1 w-full max-w-[150px]">
+                                            <div className="flex justify-between items-end">
+                                              <span className="text-sm font-black text-slate-900 dark:text-white">100.0%</span>
+                                              <span className="text-[10px] uppercase font-bold text-slate-500">{vid.like_count?.toLocaleString() || 0} likes</span>
+                                            </div>
+                                            <div className="w-full h-1 bg-slate-900/5 dark:bg-white/5 rounded-full overflow-hidden">
+                                              <div className="h-full bg-slate-900 dark:bg-slate-300 w-full" />
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td className="px-6 py-5 text-right text-[10px] font-bold text-slate-600 uppercase">
+                                          {vid.published_at ? new Date(vid.published_at).toLocaleDateString() : 'N/A'}
+                                        </td>
+                                      </tr>
+                                    ))
+                                  ) : (
+                                    <tr>
+                                      <td colSpan={4} className="py-20 text-center">
+                                        <div className="flex flex-col items-center gap-4 opacity-20">
+                                          <Youtube className="w-12 h-12" />
+                                          <p className="text-xs font-black tracking-[0.3em] uppercase text-slate-900 dark:text-white">No Video Data Available</p>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </Card>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {activeTab === 'audience' && (
+                      <motion.div
+                        key="audience"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="space-y-6"
+                      >
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <Card>
+                            <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight mb-6">Age &amp; Gender Breakdown</h3>
+                            <div className="h-[250px]">
+                              {(() => {
+                                const ag = data?.demographics?.ageGender;
+                                // fallback data for UX attractiveness
+                                const defaultAG = {
+                                  "18-24_male": 22.5, "25-34_male": 35.8, "35-44_male": 12.4,
+                                  "18-20_female": 8.5, "25-34_female": 15.2, "45-54_male": 5.6
+                                };
+                                const displayData = (ag && Object.keys(ag).length > 0) ? ag : defaultAG;
+
+                                const chartData = Object.entries(displayData).map(([key, val]: any) => ({
+                                  name: key.replace('_', ' ').toUpperCase(),
+                                  value: parseFloat(val.toFixed(1)),
+                                }));
+                                return (
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={chartData} layout="vertical">
+                                      <XAxis type="number" fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" tickFormatter={(v) => `${v}%`} />
+                                      <YAxis type="category" dataKey="name" fontSize={9} axisLine={false} tickLine={false} stroke="#64748b" width={90} />
+                                      <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} formatter={(v: any) => [`${v}%`, 'Share']} />
+                                      <Bar dataKey="value" fill="#FF0000" radius={[0, 4, 4, 0]} />
+                                    </BarChart>
+                                  </ResponsiveContainer>
+                                );
+                              })()}
+                            </div>
+                          </Card>
+                          <Card>
+                            <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight mb-6">Top Countries by Views</h3>
+                            <div className="space-y-3">
+                              {(() => {
+                                const countries = data?.demographics?.countries;
+                                // Fallback attractive data
+                                const defaultCountries = [
+                                  { country: "US", views: 45200 }, { country: "GB", views: 12500 },
+                                  { country: "DE", views: 8900 }, { country: "FR", views: 7600 },
+                                  { country: "IT", views: 5400 }
+                                ];
+                                const displayData = (countries && countries.length > 0) ? countries : defaultCountries;
+
+                                const maxViews = displayData[0]?.views || 1;
+                                return displayData.map((c: any, i: number) => (
+                                  <div key={c.country} className="flex items-center gap-3">
+                                    <span className="text-[10px] font-black text-slate-400 w-4">{i + 1}</span>
+                                    <span className="w-8 text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{c.country}</span>
+                                    <div className="flex-1 h-2 bg-slate-900/5 dark:bg-white/5 rounded-full overflow-hidden">
+                                      <div
+                                        className="h-full bg-gradient-to-r from-brand-yt to-brand-yt/40 rounded-full transition-all duration-700"
+                                        style={{ width: `${(c.views / maxViews) * 100}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums min-w-[60px] text-right">{c.views.toLocaleString()}</span>
+                                  </div>
+                                ));
+                              })()}
                             </div>
                           </Card>
                         </div>
 
-                        <Card className="p-0 overflow-hidden">
-                          <div className="p-8 border-b border-slate-900/5 dark:border-white/5 flex justify-between items-center bg-white/[0.01]">
-                            <div>
-                              <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Content Performance</h3>
-                              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Detailed video analytics breakdown</p>
-                            </div>
-                            <button className="text-xs font-bold text-brand-yt hover:underline uppercase tracking-widest">Advanced Engine</button>
-                          </div>
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                              <thead>
-                                <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-900/5 dark:border-white/5">
-                                  <th className="px-8 py-4">Video Details</th>
-                                  <th className="px-6 py-4 text-center">Views</th>
-                                  <th className="px-6 py-4 text-center">Comments</th>
-                                  <th className="px-6 py-4">Likes (vs dislikes)</th>
-                                  <th className="px-6 py-4 text-right">Published</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-900/5 dark:divide-white/5">
-                                {data?.videos?.length > 0 ? (
-                                  data.videos.map((vid: any) => (
-                                    <tr key={vid.id} className="hover:bg-white/[0.02] transition-colors group">
-                                      <td className="px-8 py-5">
-                                        <div className="flex items-center gap-4">
-                                          <img src={vid.thumbnail_url} className="w-24 h-14 rounded-lg object-cover border border-slate-900/10 dark:border-white/10 group-hover:scale-105 transition-transform" />
-                                          <div className="flex flex-col max-w-[300px]">
-                                            <span className="text-sm font-bold text-slate-900 dark:text-white line-clamp-2 truncate">{vid.title}</span>
-                                            <span className="text-[10px] text-slate-500 mt-1 uppercase font-bold tracking-tighter">ID: {vid.id}</span>
-                                          </div>
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-5 text-center text-sm font-black text-slate-900 dark:text-white">{vid.view_count?.toLocaleString() || 0}</td>
-                                      <td className="px-6 py-5 text-center text-sm font-bold text-slate-600 dark:text-slate-400">{vid.comment_count?.toLocaleString() || 0}</td>
-                                      <td className="px-6 py-5">
-                                        <div className="flex flex-col gap-1 w-full max-w-[150px]">
-                                          <div className="flex justify-between items-end">
-                                            <span className="text-sm font-black text-slate-900 dark:text-white">100.0%</span>
-                                            <span className="text-[10px] uppercase font-bold text-slate-500">{vid.like_count?.toLocaleString() || 0} likes</span>
-                                          </div>
-                                          <div className="w-full h-1 bg-slate-900/5 dark:bg-white/5 rounded-full overflow-hidden">
-                                            <div className="h-full bg-slate-900 dark:bg-slate-300 w-full" />
-                                          </div>
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-5 text-right text-[10px] font-bold text-slate-600 uppercase">
-                                        {vid.published_at ? new Date(vid.published_at).toLocaleDateString() : 'N/A'}
-                                      </td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td colSpan={4} className="py-20 text-center">
-                                      <div className="flex flex-col items-center gap-4 opacity-20">
-                                        <Youtube className="w-12 h-12" />
-                                        <p className="text-xs font-black tracking-[0.3em] uppercase text-slate-900 dark:text-white">No Video Data Available</p>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                        </Card>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {activeTab === 'audience' && (
-                    <motion.div
-                      key="audience"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="space-y-6"
-                    >
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Subscriber Trend */}
                         <Card>
-                          <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight mb-6">Age &amp; Gender Breakdown</h3>
-                          <div className="h-[250px]">
-                            {(() => {
-                              const ag = data?.demographics?.ageGender;
-                              // fallback data for UX attractiveness
-                              const defaultAG = {
-                                "18-24_male": 22.5, "25-34_male": 35.8, "35-44_male": 12.4, 
-                                "18-20_female": 8.5, "25-34_female": 15.2, "45-54_male": 5.6
-                              };
-                              const displayData = (ag && Object.keys(ag).length > 0) ? ag : defaultAG;
-                              
-                              const chartData = Object.entries(displayData).map(([key, val]: any) => ({
-                                name: key.replace('_', ' ').toUpperCase(),
-                                value: parseFloat(val.toFixed(1)),
-                              }));
-                              return (
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <BarChart data={chartData} layout="vertical">
-                                    <XAxis type="number" fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" tickFormatter={(v) => `${v}%`} />
-                                    <YAxis type="category" dataKey="name" fontSize={9} axisLine={false} tickLine={false} stroke="#64748b" width={90} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} formatter={(v: any) => [`${v}%`, 'Share']} />
-                                    <Bar dataKey="value" fill="#FF0000" radius={[0, 4, 4, 0]} />
-                                  </BarChart>
-                                </ResponsiveContainer>
-                              );
-                            })()}
-                          </div>
-                        </Card>
-                        <Card>
-                          <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight mb-6">Top Countries by Views</h3>
-                          <div className="space-y-3">
-                            {(() => {
-                              const countries = data?.demographics?.countries;
-                              // Fallback attractive data
-                              const defaultCountries = [
-                                { country: "US", views: 45200 }, { country: "GB", views: 12500 }, 
-                                { country: "DE", views: 8900 }, { country: "FR", views: 7600 },
-                                { country: "IT", views: 5400 }
-                              ];
-                              const displayData = (countries && countries.length > 0) ? countries : defaultCountries;
-                              
-                              const maxViews = displayData[0]?.views || 1;
-                              return displayData.map((c: any, i: number) => (
-                                <div key={c.country} className="flex items-center gap-3">
-                                  <span className="text-[10px] font-black text-slate-400 w-4">{i + 1}</span>
-                                  <span className="w-8 text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{c.country}</span>
-                                  <div className="flex-1 h-2 bg-slate-900/5 dark:bg-white/5 rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-gradient-to-r from-brand-yt to-brand-yt/40 rounded-full transition-all duration-700"
-                                      style={{ width: `${(c.views / maxViews) * 100}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums min-w-[60px] text-right">{c.views.toLocaleString()}</span>
-                                </div>
-                              ));
-                            })()}
-                          </div>
-                        </Card>
-                      </div>
-
-                      {/* Subscriber Trend */}
-                      <Card>
-                        <div className="flex justify-between items-center mb-6">
-                          <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Subscriber Retention Trend</h3>
-                          <div className="flex gap-4 text-[10px] font-black">
-                            <span className="text-emerald-400">● GAINED</span>
-                            <span className="text-rose-400">● LOST</span>
-                          </div>
-                        </div>
-                        <div className="h-[200px]">
-                          {data?.demographics?.subscriberTrend?.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={data.demographics.subscriberTrend}>
-                                <defs>
-                                  <linearGradient id="gainGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                  </linearGradient>
-                                  <linearGradient id="lossGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                                  </linearGradient>
-                                </defs>
-                                <XAxis dataKey="date" hide />
-                                <YAxis hide />
-                                <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} />
-                                <Area type="monotone" dataKey="subscribersGained" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#gainGrad)" />
-                                <Area type="monotone" dataKey="subscribersLost" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#lossGrad)" />
-                              </AreaChart>
-                            </ResponsiveContainer>
-                          ) : (
-                            <div className="h-full flex items-center justify-center text-xs text-slate-500 font-bold tracking-widest uppercase">Sync to see retention trend</div>
-                          )}
-                        </div>
-                      </Card>
-                    </motion.div>
-                  )}
-
-                  {activeTab === 'trends' && (
-                    <motion.div
-                      key="trends"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 1.05 }}
-                      className="space-y-8"
-                    >
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* AI Inspiration Panel */}
-                        <Card className="lg:col-span-2 bg-gradient-to-br from-brand-yt/5 to-transparent border-brand-yt/10">
-                          <div className="flex items-center justify-between mb-6">
-                            <div>
-                              <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">AI Content Inspiration</h3>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Based on your top videos &amp; automations</p>
+                          <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Subscriber Retention Trend</h3>
+                            <div className="flex gap-4 text-[10px] font-black">
+                              <span className="text-emerald-400">● GAINED</span>
+                              <span className="text-rose-400">● LOST</span>
                             </div>
-                            <button
-                              onClick={fetchTrends}
-                              disabled={trendsLoading}
-                              className="flex items-center gap-2 px-4 py-2 bg-brand-yt/10 border border-brand-yt/20 text-brand-yt rounded-xl text-xs font-black hover:bg-brand-yt/20 transition-all disabled:opacity-50"
-                            >
-                              <RefreshCw className={cn('w-3 h-3', trendsLoading && 'animate-spin')} />
-                              {trendsLoading ? 'GENERATING...' : 'GENERATE IDEAS'}
-                            </button>
                           </div>
-                          {trendsError && (
-                            <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-400 font-bold">{trendsError}</div>
-                          )}
-                          {trendsIdeas.length > 0 ? (
-                            <div className="space-y-3">
-                              {trendsIdeas.map((idea: any, i: number) => (
-                                <div
-                                  key={i}
-                                  className="group p-4 bg-slate-900/5 dark:bg-white/5 rounded-xl border border-slate-900/5 dark:border-white/5 cursor-pointer hover:border-brand-yt/20 transition-all"
-                                  onClick={() => setExpandedIdea(expandedIdea === i ? null : i)}
-                                >
-                                  <div className="flex items-start justify-between gap-4">
-                                    <p className="text-sm font-black text-slate-900 dark:text-white">{idea.title}</p>
-                                    <span className="shrink-0 text-[10px] font-black px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">{idea.estimated_ctr} CTR</span>
-                                  </div>
-                                  {expandedIdea === i && (
-                                    <div className="mt-3 pt-3 border-t border-slate-900/5 dark:border-white/5">
-                                      <p className="text-xs text-slate-600 dark:text-slate-400 italic leading-relaxed">&quot;{idea.hook}&quot;</p>
-                                      <button
-                                        className="mt-3 text-[10px] font-black text-brand-yt hover:underline"
-                                        onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(`${idea.title}\n\n${idea.hook}`); setCopyMsg(i); setTimeout(() => setCopyMsg(null), 2000); }}
-                                      >
-                                        {copyMsg === i ? '✓ COPIED!' : '⎘ COPY IDEA'}
-                                      </button>
+                          <div className="h-[200px]">
+                            {data?.demographics?.subscriberTrend?.length > 0 ? (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={data.demographics.subscriberTrend}>
+                                  <defs>
+                                    <linearGradient id="gainGrad" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="lossGrad" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
+                                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                                    </linearGradient>
+                                  </defs>
+                                  <XAxis dataKey="date" hide />
+                                  <YAxis hide />
+                                  <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} />
+                                  <Area type="monotone" dataKey="subscribersGained" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#gainGrad)" />
+                                  <Area type="monotone" dataKey="subscribersLost" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#lossGrad)" />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            ) : (
+                              <div className="h-full flex items-center justify-center text-xs text-slate-500 font-bold tracking-widest uppercase">Sync to see retention trend</div>
+                            )}
+                          </div>
+                        </Card>
+                      </motion.div>
+                    )}
+
+                    {activeTab === 'trends' && (
+                      <motion.div
+                        key="trends"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.05 }}
+                        className="space-y-8"
+                      >
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                          {/* AI Inspiration Panel */}
+                          <Card className="lg:col-span-2 bg-gradient-to-br from-brand-yt/5 to-transparent border-brand-yt/10">
+                            <div className="flex items-center justify-between mb-6">
+                              <div>
+                                <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">AI Content Inspiration</h3>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Based on your top videos &amp; automations</p>
+                              </div>
+                              <button
+                                onClick={fetchTrends}
+                                disabled={trendsLoading}
+                                className="flex items-center gap-2 px-4 py-2 bg-brand-yt/10 border border-brand-yt/20 text-brand-yt rounded-xl text-xs font-black hover:bg-brand-yt/20 transition-all disabled:opacity-50"
+                              >
+                                <RefreshCw className={cn('w-3 h-3', trendsLoading && 'animate-spin')} />
+                                {trendsLoading ? 'GENERATING...' : 'GENERATE IDEAS'}
+                              </button>
+                            </div>
+                            {trendsError && (
+                              <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-400 font-bold">{trendsError}</div>
+                            )}
+                            {trendsIdeas.length > 0 ? (
+                              <div className="space-y-3">
+                                {trendsIdeas.map((idea: any, i: number) => (
+                                  <div
+                                    key={i}
+                                    className="group p-4 bg-slate-900/5 dark:bg-white/5 rounded-xl border border-slate-900/5 dark:border-white/5 cursor-pointer hover:border-brand-yt/20 transition-all"
+                                    onClick={() => setExpandedIdea(expandedIdea === i ? null : i)}
+                                  >
+                                    <div className="flex items-start justify-between gap-4">
+                                      <p className="text-sm font-black text-slate-900 dark:text-white">{idea.title}</p>
+                                      <span className="shrink-0 text-[10px] font-black px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">{idea.estimated_ctr} CTR</span>
                                     </div>
-                                  )}
+                                    {expandedIdea === i && (
+                                      <div className="mt-3 pt-3 border-t border-slate-900/5 dark:border-white/5">
+                                        <p className="text-xs text-slate-600 dark:text-slate-400 italic leading-relaxed">&quot;{idea.hook}&quot;</p>
+                                        <button
+                                          className="mt-3 text-[10px] font-black text-brand-yt hover:underline"
+                                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(`${idea.title}\n\n${idea.hook}`); setCopyMsg(i); setTimeout(() => setCopyMsg(null), 2000); }}
+                                        >
+                                          {copyMsg === i ? '✓ COPIED!' : '⎘ COPY IDEA'}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="py-12 flex flex-col items-center gap-4 text-slate-500">
+                                <Zap className="w-10 h-10 opacity-20" />
+                                <p className="text-xs font-bold tracking-widest uppercase text-center">Click &quot;Generate Ideas&quot; to get AI-powered content<br />ideas based on your real channel data.</p>
+                              </div>
+                            )}
+                          </Card>
+
+                          {/* Performance Matrix (replaces infinite spinner) */}
+                          <Card>
+                            <h3 className="font-black text-slate-900 dark:text-white tracking-tight mb-6">Performance Matrix</h3>
+                            <div className="space-y-5">
+                              {[
+                                { label: 'Views (30d)', value: fmt(data?.summary?.recent_views), color: 'bg-brand-yt' },
+                                { label: 'Watch Time', value: formatWatchTime(data?.summary?.watch_time_minutes), color: 'bg-blue-400' },
+                                { label: 'Subscribers', value: fmt(data?.summary?.subscribers), color: 'bg-emerald-400' },
+                                { label: 'Total Videos', value: fmt(data?.summary?.total_videos), color: 'bg-purple-400' },
+                                { label: 'Recent Likes', value: fmt(data?.summary?.recent_likes), color: 'bg-amber-400' },
+                              ].map((row) => (
+                                <div key={row.label} className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className={cn('w-2 h-2 rounded-full', row.color)} />
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{row.label}</span>
+                                  </div>
+                                  <span className="text-sm font-black text-slate-900 dark:text-white">{row.value}</span>
                                 </div>
                               ))}
                             </div>
-                          ) : (
-                            <div className="py-12 flex flex-col items-center gap-4 text-slate-500">
-                              <Zap className="w-10 h-10 opacity-20" />
-                              <p className="text-xs font-bold tracking-widest uppercase text-center">Click &quot;Generate Ideas&quot; to get AI-powered content<br />ideas based on your real channel data.</p>
+                            <div className="mt-6 pt-4 border-t border-slate-900/5 dark:border-white/5">
+                              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Connect competitor channels to unlock competitive analysis</p>
+                              <button className="mt-3 w-full py-2 border border-dashed border-slate-300 dark:border-white/10 rounded-xl text-xs font-black text-slate-500 hover:border-brand-yt/30 hover:text-brand-yt transition-all">+ Add Channel</button>
                             </div>
-                          )}
-                        </Card>
-
-                        {/* Performance Matrix (replaces infinite spinner) */}
-                        <Card>
-                          <h3 className="font-black text-slate-900 dark:text-white tracking-tight mb-6">Performance Matrix</h3>
-                          <div className="space-y-5">
-                            {[
-                              { label: 'Views (30d)', value: fmt(data?.summary?.recent_views), color: 'bg-brand-yt' },
-                              { label: 'Watch Time', value: formatWatchTime(data?.summary?.watch_time_minutes), color: 'bg-blue-400' },
-                              { label: 'Subscribers', value: fmt(data?.summary?.subscribers), color: 'bg-emerald-400' },
-                              { label: 'Total Videos', value: fmt(data?.summary?.total_videos), color: 'bg-purple-400' },
-                              { label: 'Recent Likes', value: fmt(data?.summary?.recent_likes), color: 'bg-amber-400' },
-                            ].map((row) => (
-                              <div key={row.label} className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className={cn('w-2 h-2 rounded-full', row.color)} />
-                                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{row.label}</span>
-                                </div>
-                                <span className="text-sm font-black text-slate-900 dark:text-white">{row.value}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="mt-6 pt-4 border-t border-slate-900/5 dark:border-white/5">
-                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Connect competitor channels to unlock competitive analysis</p>
-                            <button className="mt-3 w-full py-2 border border-dashed border-slate-300 dark:border-white/10 rounded-xl text-xs font-black text-slate-500 hover:border-brand-yt/30 hover:text-brand-yt transition-all">+ Add Channel</button>
-                          </div>
-                        </Card>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
+                          </Card>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
 
               {activePlatform === 'tiktok' && (
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard title="Total Views" value="2.4M" icon={Activity} delta={18} color="brand-tiktok" />
-                    <StatCard title="Engagement Rate" value="12.4%" icon={Zap} delta={3} color="brand-tiktok" />
+                    <StatCard title="Engagement Rate" value="12.4%" icon={TikTokIcon} delta={3} color="brand-tiktok" />
                     <StatCard title="Followers" value="85.2K" icon={Users} delta={5} color="brand-tiktok" />
                     <StatCard title="Avg Watch Time" value="14.2s" icon={Clock} color="brand-tiktok" />
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <Card className="lg:col-span-2">
-                       <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight mb-8 text-[#00f2ea]">Retention Curve</h3>
-                       <div className="h-[300px] flex items-center justify-center border border-dashed border-white/5 rounded-2xl bg-white/[0.01]">
-                          <BarChart3 className="w-12 h-12 text-[#00f2ea] opacity-20 animate-pulse" />
-                       </div>
+                      <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight mb-8 text-[#00f2ea]">Retention Curve</h3>
+                      <div className="h-[300px] flex items-center justify-center border border-dashed border-white/5 rounded-2xl bg-white/[0.01]">
+                        <BarChart3 className="w-12 h-12 text-[#00f2ea] opacity-20 animate-pulse" />
+                      </div>
                     </Card>
                     <Card className="bg-gradient-to-br from-[#00f2ea]/10 to-transparent border-[#00f2ea]/20">
-                       <h3 className="text-sm font-black text-[#00f2ea] uppercase tracking-widest mb-4">Trending Sounds</h3>
-                       <div className="space-y-4">
-                          {[
-                            { name: 'Lo-fi Chill Beats', use: 'High' },
-                            { name: 'Corporate Shuffle', use: 'Medium' },
-                            { name: 'Neon Nights', use: 'Trending' }
-                          ].map(s => (
-                            <div key={s.name} className="flex justify-between items-center p-3 bg-white/5 rounded-xl text-xs font-bold">
-                               <span className="text-white">{s.name}</span>
-                               <span className="text-[#00f2ea]">{s.use}</span>
-                            </div>
-                          ))}
-                       </div>
+                      <h3 className="text-sm font-black text-[#00f2ea] uppercase tracking-widest mb-4">Trending Sounds</h3>
+                      <div className="space-y-4">
+                        {[
+                          { name: 'Lo-fi Chill Beats', use: 'High' },
+                          { name: 'Corporate Shuffle', use: 'Medium' },
+                          { name: 'Neon Nights', use: 'Trending' }
+                        ].map(s => (
+                          <div key={s.name} className="flex justify-between items-center p-3 bg-white/5 rounded-xl text-xs font-bold">
+                            <span className="text-white">{s.name}</span>
+                            <span className="text-[#00f2ea]">{s.use}</span>
+                          </div>
+                        ))}
+                      </div>
                     </Card>
                   </div>
                 </motion.div>
@@ -993,21 +1014,21 @@ export default function App() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard title="Impressions" value="142K" icon={BarChart3} delta={-2} color="brand-twitter" />
                     <StatCard title="Retweets" value="1.2K" icon={RefreshCw} delta={14} color="brand-twitter" />
-                    <StatCard title="Link Clicks" value="850" icon={Zap} delta={22} color="brand-twitter" />
+                    <StatCard title="Link Clicks" value="850" icon={XIcon} delta={22} color="brand-twitter" />
                     <StatCard title="Mentions" value="340" icon={MessageSquare} color="brand-twitter" />
                   </div>
                   <Card className="p-8">
-                     <div className="flex justify-between items-center mb-10">
-                        <div>
-                          <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Reach Protocol</h3>
-                          <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest text-[#1DA1F2]">Audience amplification metrics</p>
-                        </div>
-                        <div className="px-4 py-2 bg-[#1DA1F2]/10 border border-[#1DA1F2]/20 rounded-xl text-[10px] font-black text-[#1DA1F2]">LIVE FEED</div>
-                     </div>
-                     <div className="h-[300px] w-full bg-[#1DA1F2]/5 rounded-3xl border border-[#1DA1F2]/10 flex flex-col items-center justify-center gap-4">
-                        <TrendingUp className="w-16 h-16 text-[#1DA1F2] opacity-30 animate-bounce" />
-                        <p className="text-xs font-black text-slate-400 tracking-[0.3em]">PROCESSING REAL-TIME FLOWS</p>
-                     </div>
+                    <div className="flex justify-between items-center mb-10">
+                      <div>
+                        <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Reach Protocol</h3>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest text-[#1DA1F2]">Audience amplification metrics</p>
+                      </div>
+                      <div className="px-4 py-2 bg-[#1DA1F2]/10 border border-[#1DA1F2]/20 rounded-xl text-[10px] font-black text-[#1DA1F2]">LIVE FEED</div>
+                    </div>
+                    <div className="h-[300px] w-full bg-[#1DA1F2]/5 rounded-3xl border border-[#1DA1F2]/10 flex flex-col items-center justify-center gap-4">
+                      <TrendingUp className="w-16 h-16 text-[#1DA1F2] opacity-30 animate-bounce" />
+                      <p className="text-xs font-black text-slate-400 tracking-[0.3em]">PROCESSING REAL-TIME FLOWS</p>
+                    </div>
                   </Card>
                 </motion.div>
               )}
