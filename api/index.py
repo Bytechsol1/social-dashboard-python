@@ -25,9 +25,11 @@ from fastapi.responses import JSONResponse
 app = FastAPI(title="Social Intelligence Dashboard API", version="2.0.0")
 
 # Allow Vite dev server (port 3000) to hit the API
+# Allow both local dev and production domains
+# Using '*' for origins on Vercel is often necessary initially to debug connectivity
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
+    allow_origins=["*"] if os.environ.get("VERCEL") else [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         os.environ.get("APP_URL", "http://localhost:3000"),
@@ -68,8 +70,14 @@ except ImportError:
     from routes.api import router as api_router
     from routes.debug import router as debug_router
 
+# Include routers with and without prefix for Vercel/Local compatibility
 app.include_router(api_router, prefix="/api")
 app.include_router(debug_router, prefix="/api/debug")
+
+# Vercel fallback: some environments pass the path WITHOUT the /api prefix 
+# after the rewrite. This ensures those requests still hit the right handlers.
+app.include_router(api_router)
+app.include_router(debug_router, prefix="/debug")
 
 if __name__ == "__main__":
     import uvicorn
