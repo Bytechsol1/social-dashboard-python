@@ -11,22 +11,35 @@ def get_connection() -> sqlite3.Connection:
     """Return a new SQLite connection with row_factory set.
     Optimized for Vercel/stateless environments.
     """
-    # If DATABASE_URL is provided, we should eventually switch to Postgres
-    # For now, let's just make SQLite stable on Vercel
     is_vercel = os.environ.get("VERCEL") == "1"
     
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    
-    # WAL mode is not supported on Vercel's read-only filesystem
-    if not is_vercel:
-        try:
-            conn.execute("PRAGMA journal_mode=WAL")
-        except Exception:
-            pass
-    
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+    # Check for DATABASE_URL (for hosted Postgres/Neon/Supabase)
+    if os.environ.get("DATABASE_URL"):
+        # Future: Switch to Postgres. For now, we still use SQLite.
+        pass
+
+    try:
+        # On Vercel, if DB doesn't exist, this fails because filesystem is read-only
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.row_factory = sqlite3.Row
+        
+        # WAL mode is not supported on Vercel's read-only filesystem
+        if not is_vercel:
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+            except Exception:
+                pass
+        
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+    except sqlite3.Error as e:
+        print(f"[DB ERROR] Could not connect to {DB_PATH}: {e}")
+        if is_vercel:
+            print("[DB INFO] Falling back to :memory: database (Stateless/Ephemeral)")
+            conn = sqlite3.connect(":memory:")
+            conn.row_factory = sqlite3.Row
+            return conn
+        raise
 
 
 @contextmanager
@@ -44,16 +57,7 @@ def get_db():
 
 
 def init_db():
-    """Create all tables if they don't exist (called on startup).
-    Skips writes on Vercel if DB is missing to prevent startup crash.
-    """
-    is_vercel = os.environ.get("VERCEL") == "1"
-    db_exists = DB_PATH.exists()
-    
-    if is_vercel and not db_exists:
-        print("[DB WARNING] Database file not found on Vercel. Running in ephemeral mode.")
-        return # Skip initialization to prevent read-only filesystem error
-        
+    """Create all tables if they don't exist (called on startup)."""
     try:
         with get_db() as conn:
             conn.executescript("""
