@@ -5,7 +5,8 @@ from contextlib import contextmanager
 from pathlib import Path
 
 # Database file lives at project root
-DB_PATH = Path(__file__).parent.parent / "social_intel.db"
+# Using .resolve() ensures we find the actual file on Vercel
+DB_PATH = (Path(__file__).parent.parent / "social_intel.db").resolve()
 
 def get_connection() -> sqlite3.Connection:
     """Return a new SQLite connection with row_factory set.
