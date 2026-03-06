@@ -25,7 +25,12 @@ def get_connection() -> sqlite3.Connection:
         pass
 
     try:
-        # On Vercel, if DB doesn't exist, this fails because filesystem is read-only
+        # On Vercel, we MUST NOT attempt to connect if the file doesn't exist,
+        # otherwise SQLite will try to create it and crash with "Read-only file system".
+        if is_vercel and not DB_PATH.exists():
+             print(f"[DB INFO] {DB_PATH} not found. Forcing fallback.")
+             raise sqlite3.OperationalError("Database file missing on read-only FS")
+
         conn = sqlite3.connect(str(DB_PATH))
         conn.row_factory = sqlite3.Row
         

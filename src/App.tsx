@@ -153,7 +153,8 @@ export default function App() {
   }, [theme]);
 
   const fetchData = async () => {
-    const timer = setTimeout(() => { setLoading(false); setLoadError(true); }, 10000);
+    // Increased to 30s to allow for Vercel Hobby tier cold starts
+    const timer = setTimeout(() => { setLoading(false); setLoadError(true); }, 30000);
     try {
       const [dashRes, statusRes] = await Promise.all([
         fetch('/api/dashboard'),
@@ -181,7 +182,7 @@ export default function App() {
     const timer = setTimeout(() => {
       setTrendsLoading(false);
       setTrendsError('Request timed out. Check ANTHROPIC_API_KEY or retry.');
-    }, 10000);
+    }, 30000);
     try {
       const res = await fetch('/api/trends/inspiration', { method: 'POST' });
       const json = await res.json();

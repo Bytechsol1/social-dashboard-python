@@ -4,8 +4,9 @@ Format: hex(iv) + ":" + hex(ciphertext)
 The secret is padded/truncated to exactly 32 bytes, exactly as the Node code does.
 """
 import os
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
+
+# Deferred imports of cryptography primitives inside functions
+# to avoid Vercel cold start overhead.
 
 _SECRET_RAW = (
     os.environ.get("ENCRYPTION_SECRET")
@@ -17,6 +18,9 @@ _KEY = (_SECRET_RAW + " " * 32)[:32].encode("utf-8")
 
 
 def encrypt(text: str) -> str:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.backends import default_backend
+
     iv = os.urandom(16)
     cipher = Cipher(algorithms.AES(_KEY), modes.CBC(iv), backend=default_backend())
     encryptor = cipher.encryptor()
@@ -41,6 +45,9 @@ def decrypt(token: str) -> str:
         iv_hex, cipher_hex = token.split(":", 1)
         iv = bytes.fromhex(iv_hex)
         ciphertext = bytes.fromhex(cipher_hex)
+
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.backends import default_backend
 
         cipher = Cipher(algorithms.AES(_KEY), modes.CBC(iv), backend=default_backend())
         decryptor = cipher.decryptor()
