@@ -117,7 +117,7 @@ export default function App() {
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [activePlatform, setActivePlatform] = useState<'youtube' | 'tiktok' | 'twitter'>('youtube');
+  const [activePlatform, setActivePlatform] = useState<'overview' | 'youtube' | 'tiktok' | 'twitter' | 'manychat'>('overview');
   const [syncing, setSyncing] = useState(false);
   const [manychatKey, setManychatKey] = useState("");
   const [showSettings, setShowSettings] = useState(false);
@@ -294,7 +294,18 @@ export default function App() {
         <div className="w-12 h-12 bg-gradient-to-br from-brand-yt to-brand-yt/60 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-yt/20">
           <TrendingUp className="text-slate-900 dark:text-white w-6 h-6" />
         </div>
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5">
+          <button
+            onClick={() => { setShowSettings(false); setActivePlatform('overview'); }}
+            className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'overview' ? "bg-slate-900/10 dark:bg-white/10 text-emerald-400 shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
+            title="Unified Command"
+          >
+            <LayoutDashboard className="w-6 h-6" />
+            {!showSettings && activePlatform === 'overview' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-emerald-400/20 blur-xl -z-10" />}
+          </button>
+
+          <div className="h-px w-6 bg-slate-900/5 dark:bg-white/5 mx-auto opacity-50" />
+
           <button
             onClick={() => { setShowSettings(false); setActivePlatform('youtube'); }}
             className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'youtube' ? "bg-slate-900/10 dark:bg-white/10 text-brand-yt shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
@@ -311,7 +322,7 @@ export default function App() {
           >
             <div className="relative">
                <Zap className="w-6 h-6" />
-               <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#ff0050] rounded-full animate-pulse" />
+               <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[#ff0050] rounded-full animate-pulse" />
             </div>
             {!showSettings && activePlatform === 'tiktok' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-[#00f2ea]/20 blur-xl -z-10" />}
           </button>
@@ -323,6 +334,15 @@ export default function App() {
           >
             <Target className="w-6 h-6" />
             {!showSettings && activePlatform === 'twitter' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-[#1DA1F2]/20 blur-xl -z-10" />}
+          </button>
+
+          <button
+            onClick={() => { setShowSettings(false); setActivePlatform('manychat'); }}
+            className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'manychat' ? "bg-slate-900/10 dark:bg-white/10 text-brand-mc shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
+            title="ManyChat Automations"
+          >
+            <MessageSquare className="w-6 h-6" />
+            {!showSettings && activePlatform === 'manychat' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-brand-mc/20 blur-xl -z-10" />}
           </button>
 
           <div className="h-px w-8 bg-slate-900/5 dark:bg-white/5 my-2" />
@@ -351,18 +371,23 @@ export default function App() {
       <main className="pl-20 flex-1 min-h-screen">
         <header className="h-20 border-b border-slate-900/5 dark:border-white/5 flex items-center justify-between px-8 sticky top-0 bg-white/80 dark:bg-[#0B0E14]/80 backdrop-blur-md z-40">
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2 uppercase">
+              {activePlatform === 'overview' && "Unified Command"}
               {activePlatform === 'youtube' && "YouTube Intelligence"}
               {activePlatform === 'tiktok' && "TikTok Hub"}
               {activePlatform === 'twitter' && "Twitter Reach"}
+              {activePlatform === 'manychat' && "ManyChat Matrix"}
               <span className={cn(
                 "w-2 h-2 rounded-full",
+                activePlatform === 'overview' ? 'bg-emerald-400' :
                 activePlatform === 'youtube' ? 'bg-brand-yt' :
-                activePlatform === 'tiktok' ? 'bg-[#00f2ea]' : 'bg-[#1DA1F2]'
+                activePlatform === 'tiktok' ? 'bg-[#00f2ea]' : 
+                activePlatform === 'twitter' ? 'bg-[#1DA1F2]' : 'bg-brand-mc'
               )} />
             </h1>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">
-              {activePlatform === 'youtube' ? 'Growth Command Center' : 
+              {activePlatform === 'overview' ? 'Central Intelligence Agency' :
+               activePlatform === 'youtube' ? 'Growth Command Center' : 
                activePlatform === 'tiktok' ? 'Engagement Matrix' : 'Audience Reach Protocol'}
             </p>
           </div>
@@ -381,6 +406,85 @@ export default function App() {
         <div className="p-8 max-w-[1600px] mx-auto space-y-10">
           {!showSettings ? (
             <>
+              {activePlatform === 'overview' && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <Card className="border-brand-yt/20 bg-brand-yt/5">
+                         <div className="flex justify-between items-center mb-4">
+                            <Youtube className="w-5 h-5 text-brand-yt" />
+                            <span className="text-[10px] font-black text-brand-yt uppercase tracking-widest">YouTube</span>
+                         </div>
+                         <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.subscribers)}</p>
+                         <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Subscribers</p>
+                      </Card>
+                      <Card className="border-[#00f2ea]/20 bg-[#00f2ea]/5">
+                         <div className="flex justify-between items-center mb-4">
+                            <Zap className="w-5 h-5 text-[#00f2ea]" />
+                            <span className="text-[10px] font-black text-[#00f2ea] uppercase tracking-widest">TikTok</span>
+                         </div>
+                         <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">85.2K</p>
+                         <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Followers</p>
+                      </Card>
+                      <Card className="border-[#1DA1F2]/20 bg-[#1DA1F2]/5">
+                         <div className="flex justify-between items-center mb-4">
+                            <Target className="w-5 h-5 text-[#1DA1F2]" />
+                            <span className="text-[10px] font-black text-[#1DA1F2] uppercase tracking-widest">Twitter</span>
+                         </div>
+                         <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">142K</p>
+                         <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Impressions (30d)</p>
+                      </Card>
+                      <Card className="border-brand-mc/20 bg-brand-mc/5">
+                         <div className="flex justify-between items-center mb-4">
+                            <MessageSquare className="w-5 h-5 text-brand-mc" />
+                            <span className="text-[10px] font-black text-brand-mc uppercase tracking-widest">ManyChat</span>
+                         </div>
+                         <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.manychat_subscribers)}</p>
+                         <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Contacts</p>
+                      </Card>
+                   </div>
+                   
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <Card className="p-8 bg-gradient-to-br from-emerald-500/[0.03] to-transparent">
+                         <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight mb-8">Growth Velocity</h3>
+                         <div className="h-[300px] w-full">
+                            {data?.chartData?.length > 0 ? (
+                               <ResponsiveContainer width="100%" height="100%">
+                                  <AreaChart data={data.chartData}>
+                                     <defs>
+                                        <linearGradient id="ovGrad" x1="0" y1="0" x2="0" y2="1">
+                                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                           <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                        </linearGradient>
+                                     </defs>
+                                     <Area type="monotone" dataKey="youtube_views" stroke="#10b981" strokeWidth={3} fill="url(#ovGrad)" />
+                                     <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} />
+                                  </AreaChart>
+                               </ResponsiveContainer>
+                            ) : (
+                               <div className="h-full flex items-center justify-center border border-dashed border-white/5 rounded-3xl">
+                                  <TrendingUp className="w-12 h-12 text-emerald-400 opacity-20" />
+                               </div>
+                            )}
+                         </div>
+                      </Card>
+                      <Card className="p-8 bg-gradient-to-br from-brand-mc/[0.03] to-transparent">
+                         <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight mb-8">Automation Pulse</h3>
+                         <div className="space-y-6">
+                            {(data?.automations || []).slice(0, 5).map((auto: any) => (
+                               <div key={auto.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-brand-mc/30 transition-all">
+                                  <div className="flex flex-col">
+                                     <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-brand-mc transition-colors">{auto.name}</span>
+                                     <span className="text-[9px] font-bold text-slate-600 uppercase mt-1 tracking-widest">{fmtDate(auto.synced_at)}</span>
+                                  </div>
+                                  <ChevronRight className="w-4 h-4 text-slate-700" />
+                               </div>
+                            ))}
+                         </div>
+                      </Card>
+                   </div>
+                </motion.div>
+              )}
+
               {activePlatform === 'youtube' && (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
@@ -907,160 +1011,158 @@ export default function App() {
                   </Card>
                 </motion.div>
               )}
-              {/* Enhanced ManyChat Section */}
-              <div className="pt-16 border-t border-slate-900/5 dark:border-white/5 space-y-10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center gap-4">
-                      <MessageSquare className="w-10 h-10 text-brand-mc" />
-                      MANYCHAT <span className="text-brand-mc px-4 py-1.5 bg-brand-mc/10 rounded-2xl text-[10px] align-middle tracking-widest border border-brand-mc/20">OPERATIONAL</span>
-                    </h2>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.4em] mt-3">Advanced conversational intelligence engine</p>
-                  </div>
-                  <div className="flex gap-6">
-                    <div className="px-6 py-4 glass-card border-brand-mc/20">
-                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NETWORK SIZE</span>
-                      <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                        {data?.summary?.manychat_subscribers != null
-                          ? data.summary.manychat_subscribers.toLocaleString()
-                          : '—'}
-                        <span className="text-xs text-slate-500 font-bold uppercase ml-1">CONTACTS</span>
+
+              {activePlatform === 'manychat' && (
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center gap-4 uppercase">
+                        <MessageSquare className="w-10 h-10 text-brand-mc" />
+                        MANYCHAT <span className="text-brand-mc px-4 py-1.5 bg-brand-mc/10 rounded-2xl text-[10px] align-middle tracking-widest border border-brand-mc/20">OPERATIONAL</span>
+                      </h2>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.4em] mt-3">Advanced conversational intelligence engine</p>
+                    </div>
+                    <div className="flex gap-6">
+                      <div className="px-6 py-4 glass-card border-brand-mc/20">
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NETWORK SIZE</span>
+                        <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                          {data?.summary?.manychat_subscribers != null
+                            ? data.summary.manychat_subscribers.toLocaleString()
+                            : '—'}
+                          <span className="text-xs text-slate-500 font-bold uppercase ml-1">CONTACTS</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                  <div className="lg:col-span-2 space-y-8">
-                    <Card className="p-0 overflow-hidden border-slate-900/5 dark:border-white/5">
-                      <div className="p-8 border-b border-slate-900/10 dark:border-white/10 flex items-center justify-between bg-white/[0.02]">
-                        <div>
-                          <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Active Protocols</h3>
-                          <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Automation efficiency matrix</p>
-                        </div>
-                        <div className="p-3 bg-brand-mc/10 rounded-2xl border border-brand-mc/20">
-                          <Zap className="w-6 h-6 text-brand-mc animate-pulse" />
-                        </div>
-                      </div>
-                      <div className="overflow-x-auto max-h-[400px] overflow-y-auto relative scroll-smooth">
-                        <table className="w-full text-left">
-                          <thead className="sticky top-0 bg-slate-50 dark:bg-[#0B0E14] z-10 border-b border-slate-900/5 dark:border-white/5">
-                            <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                              <th className="px-8 py-6">Protocol Name</th>
-                              <th className="px-6 py-6 text-center">Executions</th>
-                              <th className="px-8 py-6 text-right">Last Synced</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-900/5 dark:divide-white/5">
-                            {data?.automations?.map((auto: any) => (
-                              <tr
-                                key={auto.id}
-                                className="hover:bg-[rgba(59,130,246,0.04)] transition-colors duration-200 cursor-pointer group border-b border-slate-900/5 dark:border-white/5"
-                                onClick={() => setSelectedAuto(auto)}
-                              >
-                                <td className="px-8 py-6">
-                                  <div className="flex flex-col">
-                                    <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-brand-mc transition-colors">{auto.name}</span>
-                                    <span className="text-[9px] font-mono text-slate-600 mt-1 uppercase tracking-tighter">ID: {auto.id?.slice(0, 16)}</span>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-6 text-center text-sm font-black text-slate-900 dark:text-white">
-                                  {auto.runs != null ? auto.runs.toLocaleString() : <span className="text-slate-400">—</span>}
-                                </td>
-                                <td className="px-8 py-6 text-right text-[10px] font-bold tracking-widest">
-                                  {auto.synced_at
-                                    ? <span className="text-slate-600">{fmtDate(auto.synced_at)}</span>
-                                    : <span className="flex items-center justify-end gap-1.5 text-amber-400"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />PENDING</span>
-                                  }
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </Card>
-
-                    <Card className="p-0 overflow-hidden border-slate-900/5 dark:border-white/5">
-                      <div className="p-8 border-b border-slate-900/10 dark:border-white/10 flex items-center justify-between bg-white/[0.02]">
-                        <div>
-                          <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">System Growth</h3>
-                          <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Automations Created By Month</p>
-                        </div>
-                      </div>
-                      <div className="h-[250px] p-6">
-                        {automationsByMonth.length > 0 ? (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={automationsByMonth}>
-                              <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} stroke="#475569" />
-                              <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }} />
-                              <Bar dataKey="count" fill="#0084FF" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        ) : (
-                          <div className="h-full flex items-center justify-center text-slate-600 text-xs font-bold tracking-widest uppercase">No temporal data available</div>
-                        )}
-                      </div>
-                    </Card>
-                  </div>
-
-                  <div className="space-y-8">
-                    <Card className="border-emerald-500/20 bg-emerald-500/[0.02]">
-                      <div className="flex items-center gap-3 mb-8">
-                        <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-                          <Activity className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <h3 className="font-black text-slate-900 dark:text-white tracking-tight uppercase text-sm">Interaction Stream</h3>
-                      </div>
-                      <div className="space-y-8">
-                        {data?.interactions?.length > 0 ? (
-                          data.interactions.map((int: any) => (
-                            <div key={int.id} className="relative pl-8 border-l border-slate-900/10 dark:border-white/10 gap-2 flex flex-col group">
-                              <div className="absolute left-[-5px] top-1 w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981] group-hover:scale-125 transition-transform" />
-                              <div className="flex justify-between items-start">
-                                <span className="text-[10px] font-black text-slate-900 dark:text-white tracking-widest">USER_{int.subscriber_id.slice(-6)}</span>
-                                <span className="text-[9px] font-bold text-slate-600 uppercase tabular-nums">{new Date(int.timestamp).toLocaleTimeString()}</span>
-                              </div>
-                              <p className="text-xs text-slate-600 dark:text-slate-400 font-medium leading-relaxed italic">"{int.details}"</p>
-                              <div className="flex gap-2 mt-1">
-                                <span className="text-[8px] font-black px-2 py-0.5 bg-slate-900/5 dark:bg-white/5 rounded text-slate-500 border border-slate-900/5 dark:border-white/5 uppercase tracking-tighter">{int.type}</span>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="py-20 flex flex-col items-center justify-center text-slate-700 gap-4">
-                            <div className="w-12 h-12 rounded-full border border-slate-800 flex items-center justify-center">
-                              <Clock className="w-6 h-6 opacity-30" />
-                            </div>
-                            <p className="text-[9px] font-black tracking-[0.4em] uppercase">Standby Mode</p>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                    <div className="lg:col-span-2 space-y-8">
+                      <Card className="p-0 overflow-hidden border-slate-900/5 dark:border-white/5">
+                        <div className="p-8 border-b border-slate-900/10 dark:border-white/10 flex items-center justify-between bg-white/[0.02]">
+                          <div>
+                            <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Active Protocols</h3>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Automation efficiency matrix</p>
                           </div>
-                        )}
-                      </div>
-                    </Card>
+                          <div className="p-3 bg-brand-mc/10 rounded-2xl border border-brand-mc/20">
+                            <Zap className="w-6 h-6 text-brand-mc animate-pulse" />
+                          </div>
+                        </div>
+                        <div className="overflow-x-auto max-h-[400px] overflow-y-auto relative scroll-smooth">
+                          <table className="w-full text-left">
+                            <thead className="sticky top-0 bg-slate-50 dark:bg-[#0B0E14] z-10 border-b border-slate-900/5 dark:border-white/5">
+                              <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                <th className="px-8 py-6">Protocol Name</th>
+                                <th className="px-8 py-6 text-right">Last Synced</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-900/5 dark:divide-white/5">
+                              {data?.automations?.map((auto: any) => (
+                                <tr
+                                  key={auto.id}
+                                  className="hover:bg-[rgba(59,130,246,0.04)] transition-colors duration-200 cursor-pointer group border-b border-slate-900/5 dark:divide-white/5"
+                                  onClick={() => setSelectedAuto(auto)}
+                                >
+                                  <td className="px-8 py-6">
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-brand-mc transition-colors">{auto.name}</span>
+                                      <span className="text-[9px] font-mono text-slate-600 mt-1 uppercase tracking-tighter">ID: {auto.id?.slice(0, 16)}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-8 py-6 text-right text-[10px] font-bold tracking-widest">
+                                    {auto.synced_at
+                                      ? <span className="text-slate-600">{fmtDate(auto.synced_at)}</span>
+                                      : <span className="flex items-center justify-end gap-1.5 text-amber-400"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />PENDING</span>
+                                    }
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </Card>
 
-                    <Card className="bg-brand-mc/5 border-slate-900/5 dark:border-white/5 p-8">
-                      <h4 className="text-[10px] font-black text-brand-mc uppercase tracking-[0.3em] mb-6">Engine Diagnostics</h4>
-                      <div className="grid grid-cols-2 gap-8">
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-black text-slate-600 uppercase">Tags Active</p>
-                          <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{data?.summary?.total_tags || 0}</p>
+                      <Card className="p-0 overflow-hidden border-slate-900/5 dark:border-white/5">
+                        <div className="p-8 border-b border-slate-900/10 dark:border-white/10 flex items-center justify-between bg-white/[0.02]">
+                          <div>
+                            <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">System Growth</h3>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Automations Created By Month</p>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-black text-slate-600 uppercase">Widgets Linked</p>
-                          <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{data?.summary?.active_widgets || 0}</p>
+                        <div className="h-[250px] p-6">
+                          {automationsByMonth.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={automationsByMonth}>
+                                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} stroke="#475569" />
+                                <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }} />
+                                <Bar dataKey="count" fill="#0084FF" radius={[4, 4, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="h-full flex items-center justify-center text-slate-600 text-xs font-bold tracking-widest uppercase">No temporal data available</div>
+                          )}
                         </div>
-                      </div>
-                      <div className="mt-8 pt-6 border-t border-slate-900/5 dark:border-white/5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">API Status</span>
-                          <span className="flex items-center gap-2 text-[9px] font-black text-emerald-400 uppercase">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Encrypted Link
-                          </span>
+                      </Card>
+                    </div>
+
+                    <div className="space-y-8">
+                      <Card className="border-emerald-500/20 bg-emerald-500/[0.02]">
+                        <div className="flex items-center gap-3 mb-8">
+                          <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                            <Activity className="w-5 h-5 text-emerald-400" />
+                          </div>
+                          <h3 className="font-black text-slate-900 dark:text-white tracking-tight uppercase text-sm">Interaction Stream</h3>
                         </div>
-                      </div>
-                    </Card>
+                        <div className="space-y-8">
+                          {data?.interactions?.length > 0 ? (
+                            data.interactions.map((int: any) => (
+                              <div key={int.id} className="relative pl-8 border-l border-slate-900/10 dark:border-white/10 gap-2 flex flex-col group">
+                                <div className="absolute left-[-5px] top-1 w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981] group-hover:scale-125 transition-transform" />
+                                <div className="flex justify-between items-start">
+                                  <span className="text-[10px] font-black text-slate-900 dark:text-white tracking-widest">USER_{int.subscriber_id.slice(-6)}</span>
+                                  <span className="text-[9px] font-bold text-slate-600 uppercase tabular-nums">{new Date(int.timestamp).toLocaleTimeString()}</span>
+                                </div>
+                                <p className="text-xs text-slate-600 dark:text-slate-400 font-medium leading-relaxed italic">"{int.details}"</p>
+                                <div className="flex gap-2 mt-1">
+                                  <span className="text-[8px] font-black px-2 py-0.5 bg-slate-900/5 dark:bg-white/5 rounded text-slate-500 border border-slate-900/5 dark:border-white/5 uppercase tracking-tighter">{int.type}</span>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="py-20 flex flex-col items-center justify-center text-slate-700 gap-4">
+                              <div className="w-12 h-12 rounded-full border border-slate-800 flex items-center justify-center">
+                                <Clock className="w-6 h-6 opacity-30" />
+                              </div>
+                              <p className="text-[9px] font-black tracking-[0.4em] uppercase">Standby Mode</p>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+
+                      <Card className="bg-brand-mc/5 border-slate-900/5 dark:border-white/5 p-8">
+                        <h4 className="text-[10px] font-black text-brand-mc uppercase tracking-[0.3em] mb-6">Engine Diagnostics</h4>
+                        <div className="grid grid-cols-2 gap-8">
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-black text-slate-600 uppercase">Tags Active</p>
+                            <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{data?.summary?.total_tags || 0}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-black text-slate-600 uppercase">Widgets Linked</p>
+                            <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{data?.summary?.active_widgets || 0}</p>
+                          </div>
+                        </div>
+                        <div className="mt-8 pt-6 border-t border-slate-900/5 dark:border-white/5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">API Status</span>
+                            <span className="flex items-center gap-2 text-[9px] font-black text-emerald-400 uppercase">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Encrypted Link
+                            </span>
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </motion.div>
+              )}
             </>
           ) : (
             <motion.div
@@ -1185,20 +1287,16 @@ export default function App() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-200 dark:bg-white/5 p-4 rounded-xl">
                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Status</p>
-                    <p className="text-emerald-500 font-black flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> {selectedAuto.status}
+                    <p className="text-emerald-500 font-black flex items-center gap-2 text-xl">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" /> {selectedAuto.status}
                     </p>
                   </div>
                   <div className="bg-slate-200 dark:bg-white/5 p-4 rounded-xl">
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Total Executions</p>
-                    <p className="text-slate-900 dark:text-white font-black text-xl">{selectedAuto.runs}</p>
-                  </div>
-                  <div className="bg-brand-mc/10 p-4 rounded-xl border border-brand-mc/20">
-                    <p className="text-[10px] text-brand-mc font-bold uppercase tracking-widest mb-1">Conversion Rate</p>
-                    <p className="text-brand-mc font-black text-xl">{selectedAuto.ctr != null ? `${selectedAuto.ctr}%` : "—"}</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Last Update</p>
+                    <p className="text-slate-900 dark:text-white font-black text-xl">{fmtDate(selectedAuto.synced_at)}</p>
                   </div>
                 </div>
 
