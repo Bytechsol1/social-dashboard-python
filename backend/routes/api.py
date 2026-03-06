@@ -2,7 +2,8 @@
 import os
 import json
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List, Dict
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -10,7 +11,7 @@ from pydantic import BaseModel
 
 from google_auth_oauthlib.flow import Flow
 
-from backend.database import get_db
+from backend.database import get_db, DB_PATH
 from backend.encryption import encrypt, decrypt
 from backend.services.manychat_service import ManyChatService, ManyChatAuthError
 from backend.services.sync_engine import perform_sync
@@ -321,7 +322,7 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
             ).fetchall()]
     except Exception as e:
         print(f"[ERROR] get_dashboard DB failure: {e}")
-        return {"status": "error", "message": "Database access failed"}
+        return {"summary": {}, "chartData": [], "automations": [], "videos": [], "status": "error"}
 
     # ── Build time-series chart data (only daily YouTube metrics)
     chart_map: dict = {}
@@ -429,11 +430,18 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
 def get_status(request: Request):
     user_id = _get_user_id(request)
     status  = {"youtube": False, "manychat": False}
-    with get_db() as conn:
-        row = conn.execute(
-            "SELECT yt_refresh_token, manychat_key FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
-        if row:
-            status["youtube"]  = bool(row["yt_refresh_token"])
-            status["manychat"] = bool(row["manychat_key"])
+    
+    if not DB_PATH.exists() and os.environ.get("VERCEL") == "1":
+        return status
+
+    try:
+        with get_db() as conn:
+            row = conn.execute(
+                "SELECT yt_refresh_token, manychat_key FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+            if row:
+                status["youtube"]  = bool(row["yt_refresh_token"])
+                status["manychat"] = bool(row["manychat_key"])
+    except Exception:
+        pass
     return status
