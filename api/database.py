@@ -134,6 +134,10 @@ def init_db():
             );
         """)
 
+    except Exception as e:
+        print(f"[DB INIT ERROR] Script execution failed: {e}")
+        raise
+
     # ── Safe migrations for existing databases ─────────────────────────────
     _safe_migrate()
 

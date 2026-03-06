@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+
 # Hardened path patching for Vercel
 api_dir = Path(__file__).parent.resolve()
 root_dir = api_dir.parent.resolve()
