@@ -1,10 +1,10 @@
-import sys
-from pathlib import Path
-
-# Add project root to sys.path FOR VERCEL
-root_dir = Path(__file__).parent.parent
+# Hardened path patching for Vercel
+api_dir = Path(__file__).parent.resolve()
+root_dir = api_dir.parent.resolve()
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
+if str(api_dir) not in sys.path:
+    sys.path.insert(0, str(api_dir))
 
 import os
 from dotenv import load_dotenv
@@ -16,9 +16,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.database import init_db
-from api.routes.api import router as api_router
-from api.routes.debug import router as debug_router
+# Dual-style imports to handle Vercel's varied runtime paths
+try:
+    from api.database import init_db
+    from api.routes.api import router as api_router
+    from api.routes.debug import router as debug_router
+except (ImportError, ModuleNotFoundError):
+    from database import init_db
+    from routes.api import router as api_router
+    from routes.debug import router as debug_router
 
 app = FastAPI(title="Social Intelligence Dashboard API", version="2.0.0")
 
