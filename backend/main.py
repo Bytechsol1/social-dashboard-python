@@ -14,6 +14,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.database import init_db
 from backend.routes.api import router as api_router
