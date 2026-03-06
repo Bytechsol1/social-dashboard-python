@@ -61,12 +61,19 @@ class ManyChatService:
         flows         = self._extract_array(flows_res, nested_key="flows")
 
         # Total contacts — try multiple field names ManyChat may use
-        total_contacts = (
-            page_info.get("subscribers_count") or
-            page_info.get("active_subscribers_count") or
-            page_info.get("total_subscribers") or
-            page_info.get("contacts_count") or 0
-        )
+        # Primary: sub_res (search result metadata), Secondary: page_info
+        total_contacts = 0
+        if subs_res and subs_res.get("status") == "success":
+            sub_page = subs_res.get("page") or {}
+            total_contacts = sub_page.get("total") or 0
+            
+        if not total_contacts:
+            total_contacts = (
+                page_info.get("subscribers_count") or
+                page_info.get("active_subscribers_count") or
+                page_info.get("total_subscribers") or
+                page_info.get("contacts_count") or 0
+            )
         print(f"[MC] total_contacts resolved: {total_contacts}")
 
         active_widgets = sum(1 for w in widgets if w.get("active"))
