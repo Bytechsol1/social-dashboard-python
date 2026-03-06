@@ -27,20 +27,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {
-        "status": "online",
-        "service": "Social Intelligence Backend",
-        "api_docs": "/docs",
-        "api_root": "/api/dashboard"
-    }
+@app.get("/api/health")
+def health_check():
+    """Diagnostic route to verify server is up without DB access."""
+    return {"status": "healthy", "service": "api"}
+
+# Global Exception Handler to capture 500 errors on Vercel
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    import traceback
+    error_details = traceback.format_exc()
+    print(f"[FATAL ERROR] {error_details}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "status": "error",
+            "message": str(exc),
+            "traceback": error_details if os.environ.get("VERCEL") else None
+        }
+    )
 
 # Initialize SQLite schema on startup (includes safe migrations)
 @app.on_event("startup")
 def startup():
-    init_db()
-    print("[STARTUP] Database initialized with latest schema migrations.")
+    try:
+        init_db()
+        print("[STARTUP] Database initialized.")
+    except Exception as e:
+        print(f"[STARTUP ERROR] DB Init failed: {e}")
 
 # Mount all routes
 app.include_router(api_router, prefix="/api")
