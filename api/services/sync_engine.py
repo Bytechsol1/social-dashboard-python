@@ -13,7 +13,13 @@ from api.services.manychat_service import ManyChatService, ManyChatAuthError
 
 GOOGLE_CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
-APP_URL              = os.environ.get("APP_URL", "http://localhost:3000").rstrip("/")
+
+# Robust URL detection for Vercel vs Local
+APP_URL = os.environ.get("APP_URL") or os.environ.get("VERCEL_URL") or "http://localhost:3000"
+if "://" not in APP_URL:
+    APP_URL = f"https://{APP_URL}"
+APP_URL = APP_URL.rstrip("/")
+
 REDIRECT_URI         = f"{APP_URL}/api/auth/youtube/callback"
 
 # All three scopes — yt-analytics-monetary.readonly required for revenue
@@ -40,6 +46,11 @@ async def perform_sync(user_id: str) -> dict:
     if user.get("yt_refresh_token"):
         print("[SYNC] Initialising YouTube Sync...")
         try:
+            if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+                print("[SYNC] YouTube Sync Aborted: GOOGLE_CLIENT_ID/SECRET missing in environment")
+                results["youtube"] = "failed: missing api credentials"
+                return results
+
             raw_token = decrypt(user["yt_refresh_token"])
             if not raw_token:
                 raise ValueError("YouTube token decryption failed. Re-connection required.")
