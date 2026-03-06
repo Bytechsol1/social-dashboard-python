@@ -430,7 +430,7 @@ export default function App() {
               {activePlatform === 'overview' && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <Card className="border-brand-yt/20 bg-brand-yt/5">
+                    <Card className="border-brand-yt/30 bg-gradient-to-br from-brand-yt/10 via-brand-yt/5 to-transparent shadow-[0_0_20px_rgba(255,0,0,0.05)]">
                       <div className="flex justify-between items-center mb-4">
                         <Youtube className="w-5 h-5 text-brand-yt" />
                         <span className="text-[10px] font-black text-brand-yt uppercase tracking-widest">YouTube</span>
@@ -438,7 +438,7 @@ export default function App() {
                       <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.subscribers)}</p>
                       <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Subscribers</p>
                     </Card>
-                    <Card className="border-[#00f2ea]/20 bg-[#00f2ea]/5">
+                    <Card className="border-[#00f2ea]/30 bg-gradient-to-br from-[#00f2ea]/10 via-[#00f2ea]/5 to-transparent shadow-[0_0_20px_rgba(0,242,234,0.05)]">
                       <div className="flex justify-between items-center mb-4">
                         <TikTokIcon className="w-5 h-5 text-[#00f2ea]" />
                         <span className="text-[10px] font-black text-[#00f2ea] uppercase tracking-widest">TikTok</span>
@@ -446,15 +446,15 @@ export default function App() {
                       <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">85.2K</p>
                       <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Followers</p>
                     </Card>
-                    <Card className="border-[#1DA1F2]/20 bg-[#1DA1F2]/5">
+                    <Card className="border-[#1DA1F2]/30 bg-gradient-to-br from-[#1DA1F2]/10 via-[#1DA1F2]/5 to-transparent shadow-[0_0_20px_rgba(29,161,242,0.05)]">
                       <div className="flex justify-between items-center mb-4">
                         <XIcon className="w-5 h-5 text-[#1DA1F2]" />
-                        <span className="text-[10px] font-black text-[#1DA1F2] uppercase tracking-widest">Twitter</span>
+                        <span className="text-[10px] font-black text-[#1DA1F2] uppercase tracking-widest">Twitter / X</span>
                       </div>
                       <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">142K</p>
                       <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Impressions (30d)</p>
                     </Card>
-                    <Card className="border-brand-mc/20 bg-brand-mc/5">
+                    <Card className="border-brand-mc/30 bg-gradient-to-br from-brand-mc/10 via-brand-mc/5 to-transparent shadow-[0_0_20px_rgba(0,132,255,0.05)]">
                       <div className="flex justify-between items-center mb-4">
                         <MessageSquare className="w-5 h-5 text-brand-mc" />
                         <span className="text-[10px] font-black text-brand-mc uppercase tracking-widest">ManyChat</span>
