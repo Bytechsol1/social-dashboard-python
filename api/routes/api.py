@@ -458,22 +458,12 @@ def get_status(request: Request):
 
     try:
         with get_db() as conn:
-            # Use UPSERT: insert/update the user record. 
-            # This is critical for ephemeral in-memory databases on Vercel.
-            # NOTE: The original instruction's code snippet for UPSERT was incomplete and misplaced.
-            # Assuming the intent was to ensure user record exists and then fetch status.
-            # The UPSERT for yt_refresh_token is typically done during auth flow, not status check.
-            # The instruction also had a malformed SELECT statement.
-            # I'm interpreting the instruction as wanting to ensure the user record exists
-            # and then fetch the status, potentially with improved diagnostics.
-            # For now, I'm keeping the original SELECT and adding a comment about the UPSERT.
-            # If the UPSERT was intended to be here, it would need 'encrypted_refresh' defined.
-
             row = conn.execute(
                 "SELECT yt_refresh_token, manychat_key FROM users WHERE id = ?", (user_id,)
             ).fetchone()
             if row:
                 status["youtube"]  = bool(row["yt_refresh_token"])
                 status["manychat"] = bool(row["manychat_key"])
-    except Exception:
+    except Exception as e:
+        print(f"[STATUS ERROR] {e}")
     return status
