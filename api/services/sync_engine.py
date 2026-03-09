@@ -3,13 +3,7 @@ import os
 import json
 from datetime import datetime, timedelta, timezone
 
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
-from googleapiclient.discovery import build
-
 from api.database import get_db
-from api.encryption import decrypt
-from api.services.manychat_service import ManyChatService, ManyChatAuthError
 
 GOOGLE_CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
@@ -31,6 +25,13 @@ YT_SCOPES = [
 
 
 async def perform_sync(user_id: str) -> dict:
+    # Aggressive lazy-loading to minimize Vercel cold starts
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+    from api.encryption import decrypt
+    from api.services.manychat_service import ManyChatService
+
     print(f"[SYNC] Starting sync for user: {user_id}")
     with get_db() as conn:
         row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()

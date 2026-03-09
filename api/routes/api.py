@@ -14,7 +14,6 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 
 from api.database import get_db, DB_PATH
-from api.encryption import encrypt, decrypt
 
 router = APIRouter()
 
@@ -95,6 +94,7 @@ def youtube_callback(code: str, request: Request):
         flow.fetch_token(code=code)
         creds = flow.credentials
 
+        from api.encryption import encrypt
         encrypted_refresh = encrypt(creds.refresh_token) if creds.refresh_token else None
 
         with get_db() as conn:
@@ -130,22 +130,22 @@ def youtube_callback(code: str, request: Request):
 
 # ── ManyChat Auth ─────────────────────────────────────────────────────────────
 
-class ManyChatKeyBody(BaseModel):
+class ManyChatKey(BaseModel):
     key: str
 
 
-@router.post("/auth/manychat")
-def save_manychat_key(body: ManyChatKeyBody, request: Request):
-    from api.services.manychat_service import ManyChatService
-    user_id   = _get_user_id(request)
-    encrypted = encrypt(body.key)
+@router.post("/manychat/connect")
+def connect_manychat(request: Request, data: ManyChatKey):
+    from api.encryption import encrypt
+    user_id = _get_user_id(request)
+    encrypted_key = encrypt(data.key)
     with get_db() as conn:
         conn.execute(
             """
             INSERT INTO users (id, manychat_key) VALUES (?, ?)
             ON CONFLICT(id) DO UPDATE SET manychat_key = excluded.manychat_key
             """,
-            (user_id, encrypted),
+            (user_id, encrypted_key),
         )
     return {"success": True}
 
