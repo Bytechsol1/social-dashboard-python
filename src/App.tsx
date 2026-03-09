@@ -45,7 +45,7 @@ function cn(...inputs: ClassValue[]) {
 const cardClass = "glass-card p-6";
 
 const TikTokIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+  <svg viewBox="-2 -2 28 28" fill="currentColor" className={className}>
     <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.13-1.47V18.77a6.738 6.738 0 01-1.9 4.63c-1.32 1.34-3.21 2.1-5.11 2.1-1.9 0-3.79-.76-5.11-2.1A6.703 6.703 0 014.28 18.77c0-1.89.76-3.77 2.09-5.1 1.32-1.34 3.21-2.1 5.11-2.1.37 0 .73.03 1.09.1v4.02c-.36-.07-.72-.1-1.1-.1-1.11 0-2.22.44-3 1.23a3.912 3.912 0 00-1.24 3c0 .82.33 1.63.92 2.22.58.6 1.4.92 2.22.92.83 0 1.63-.33 2.22-.92.6-.59.92-1.4.92-2.22V.02z" />
   </svg>
 );
@@ -69,8 +69,8 @@ const StatCard = ({ title, value, icon: Icon, delta, unit = "", color = "brand-y
         "p-2 rounded-xl border transition-colors",
         color === 'brand-yt' ? 'bg-[#FF0000]/10 border-[#FF0000]/20 text-[#FF0000]' :
         color === 'brand-mc' ? 'bg-brand-mc/10 border-brand-mc/20 text-brand-mc' :
-        color === 'brand-tiktok' ? 'bg-black border-white/10 text-[#00f2ea]' :
-        'bg-black border-white/10 text-white'
+        color === 'brand-tiktok' ? 'bg-gradient-to-br from-[#00f2ea]/20 to-[#ff0050]/20 border-[#00f2ea]/20 text-slate-900 dark:text-white' :
+        'bg-slate-800 border-slate-700 text-white'
       )}>
         <Icon className="w-5 h-5" />
       </div>
@@ -308,13 +308,13 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen flex text-slate-700 dark:text-slate-300 font-sans">
+    <div className="min-h-screen flex flex-col lg:flex-row text-slate-700 dark:text-slate-300 font-sans">
       {/* Sidebar Navigation */}
-      <nav className="fixed left-0 top-0 bottom-0 w-20 border-r border-slate-900/5 dark:border-white/5 flex flex-col items-center py-8 gap-8 bg-white/80 dark:bg-[#0D1117]/80 backdrop-blur-xl z-50">
-        <div className="w-12 h-12 bg-gradient-to-br from-brand-yt to-brand-yt/60 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-yt/20">
+      <nav className="fixed bottom-0 left-0 right-0 h-16 lg:h-auto lg:w-20 lg:bottom-0 lg:left-0 lg:top-0 border-t lg:border-t-0 lg:border-r border-slate-900/5 dark:border-white/5 flex lg:flex-col items-center justify-around lg:justify-start lg:py-8 lg:gap-8 bg-white/80 dark:bg-[#0D1117]/80 backdrop-blur-xl z-[60]">
+        <div className="hidden lg:flex w-12 h-12 bg-gradient-to-br from-brand-yt to-brand-yt/60 rounded-2xl items-center justify-center shadow-lg shadow-brand-yt/20">
           <TrendingUp className="text-slate-900 dark:text-white w-6 h-6" />
         </div>
-        <div className="flex flex-col gap-5">
+        <div className="flex lg:flex-col items-center gap-2 lg:gap-5 w-full lg:w-auto px-4 lg:px-0">
           <button
             onClick={() => { setShowSettings(false); setActivePlatform('overview'); }}
             className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'overview' ? "bg-slate-900/10 dark:bg-white/10 text-emerald-400 shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
@@ -388,7 +388,13 @@ export default function App() {
       </nav>
 
       {/* Main Content */}
-      <main className="pl-20 flex-1 min-h-screen">
+      <main className="flex-1 min-h-screen lg:pl-20 pb-20 lg:pb-0">
+        {status?.status?.includes("DB missing") && (
+          <div className="bg-amber-500 text-white px-8 py-2 text-[10px] font-black uppercase tracking-[0.3em] flex items-center justify-between sticky top-0 z-[100]">
+            <span>⚠️ DATABASE_URL required on Vercel for persistence. OAuth tokens will expire.</span>
+            <button className="underline" onClick={() => setShowSettings(true)}>CONFIGURE</button>
+          </div>
+        )}
         <header className="h-20 border-b border-slate-900/5 dark:border-white/5 flex items-center justify-between px-8 sticky top-0 bg-white/80 dark:bg-[#0B0E14]/80 backdrop-blur-md z-40">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2 uppercase">
@@ -438,21 +444,21 @@ export default function App() {
                       <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.subscribers)}</p>
                       <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Subscribers</p>
                     </Card>
-                    <Card className="border-white/10 bg-black shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+                    <Card className="border-[#00f2ea]/30 bg-gradient-to-br from-[#00f2ea]/10 via-[#ff0050]/5 to-transparent shadow-[0_0_20px_rgba(0,242,234,0.1)]">
                       <div className="flex justify-between items-center mb-4">
-                        <TikTokIcon className="w-5 h-5 text-white" />
-                        <span className="text-[10px] font-black text-[#00f2ea] uppercase tracking-widest">TikTok</span>
+                        <TikTokIcon className="w-5 h-5 text-[#00f2ea]" />
+                        <span className="text-[10px] font-black text-[#ff0050] uppercase tracking-widest">TikTok Matrix</span>
                       </div>
-                      <p className="text-3xl font-black text-white tabular-nums">85.2K</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-2 tracking-widest">Total Followers</p>
+                      <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">85.2K</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Neural Retention Rate</p>
                     </Card>
-                    <Card className="border-white/10 bg-black shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+                    <Card className="border-slate-700 bg-gradient-to-br from-slate-900 to-slate-800 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
                       <div className="flex justify-between items-center mb-4">
                         <XIcon className="w-5 h-5 text-white" />
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest">X / Twitter</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">X / Twitter</span>
                       </div>
                       <p className="text-3xl font-black text-white tabular-nums">142K</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-2 tracking-widest">Impressions (30d)</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Impressions (30d)</p>
                     </Card>
                     <Card className="border-brand-mc/30 bg-gradient-to-br from-brand-mc/10 via-brand-mc/5 to-transparent shadow-[0_0_20px_rgba(0,132,255,0.05)]">
                       <div className="flex justify-between items-center mb-4">
@@ -891,55 +897,64 @@ export default function App() {
                       >
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                           {/* AI Inspiration Panel */}
-                          <Card className="lg:col-span-2 bg-gradient-to-br from-[#FF0000]/5 to-transparent border-[#FF0000]/10">
-                            <div className="flex items-center justify-between mb-8">
+                          <Card className="lg:col-span-2 bg-gradient-to-br from-[#FF0000]/5 to-transparent border-[#FF0000]/10 overflow-hidden relative">
+                            <div className="absolute top-0 right-0 p-8 opacity-5">
+                                <Youtube className="w-64 h-64 text-[#FF0000]" />
+                            </div>
+                            <div className="flex items-center justify-between mb-8 relative z-10">
                               <div>
-                                <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Shorts Opportunity Analysis</h3>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">AI-powered trend extraction from your videos</p>
+                                <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Neural Shorts Extraction</h3>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">AI-powered engagement analysis</p>
                               </div>
-                              <div className="px-4 py-1 bg-[#FF0000]/10 border border-[#FF0000]/20 rounded-full text-[10px] font-black text-[#FF0000] animate-pulse">TRENDING NOW</div>
+                              <div className="px-4 py-1 bg-[#FF0000]/10 border border-[#FF0000]/20 rounded-full text-[10px] font-black text-[#FF0000] animate-pulse">ALGORITHMIC SCAN: 100%</div>
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="p-6 bg-white/5 rounded-3xl border border-white/5 space-y-4 hover:border-[#FF0000]/30 transition-all cursor-pointer">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                              <div className="p-6 bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-white/5 space-y-4 hover:border-[#FF0000]/30 transition-all cursor-pointer shadow-sm">
                                 <div className="flex items-center gap-3">
                                   <Zap className="w-5 h-5 text-[#FF0000]" />
-                                  <h4 className="text-sm font-black text-white uppercase tracking-wider">Potential Shorts</h4>
+                                  <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Viral Hook Potential</h4>
                                 </div>
                                 <div className="flex items-end gap-2">
-                                  <span className="text-4xl font-black text-white">24</span>
-                                  <span className="text-xs font-bold text-emerald-400 mb-1">+4 this week</span>
+                                  <span className="text-4xl font-black text-slate-900 dark:text-white">24</span>
+                                  <span className="text-xs font-bold text-emerald-500 mb-1">+85% Score</span>
                                 </div>
-                                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">We identified 24 distinct high-engagement segments suitable for Shorts conversion across your recent 5 uploads.</p>
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">We found 24 aggressive hooks with high retention probability in your last video. Ideal for 0-3s retention.</p>
                               </div>
 
-                              <div className="p-6 bg-white/5 rounded-3xl border border-white/5 space-y-4 hover:border-[#FF0000]/30 transition-all cursor-pointer">
+                              <div className="p-6 bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-white/5 space-y-4 hover:border-[#FF0000]/30 transition-all cursor-pointer shadow-sm">
                                 <div className="flex items-center gap-3">
                                   <Clock className="w-5 h-5 text-[#FF0000]" />
-                                  <h4 className="text-sm font-black text-white uppercase tracking-wider">Optimal Duration</h4>
+                                  <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Segment Distribution</h4>
                                 </div>
                                 <div className="flex items-end gap-2">
-                                  <span className="text-4xl font-black text-white">58s</span>
-                                  <span className="text-xs font-bold text-slate-400 mb-1">Recommended</span>
+                                  <span className="text-4xl font-black text-slate-900 dark:text-white">58s</span>
+                                  <span className="text-xs font-bold text-slate-500 mb-1">Mean Length</span>
                                 </div>
-                                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">Based on retention data, your audience responds best to 50-60 second shorts with a fast-paced hook in the first 3 seconds.</p>
+                                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">AI recommends 58-second segments. Audience drop-off increases significantly after the 60s mark for this content type.</p>
                               </div>
                             </div>
 
-                            <div className="mt-8 p-6 bg-[#FF0000]/5 rounded-3xl border border-[#FF0000]/10">
-                              <h4 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-4">Top Engagement Segments</h4>
+                            <div className="mt-8 p-6 bg-white dark:bg-slate-900/30 rounded-3xl border border-slate-200 dark:border-white/10 relative z-10 shadow-inner">
+                              <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-[#FF0000]" /> 
+                                Top Neural Hooks
+                              </h4>
                               <div className="space-y-3">
                                 {[
-                                  { time: "0:12 - 1:10", label: "Hero Hook & Setup", score: 98 },
-                                  { time: "4:45 - 5:30", label: "Key Revelation", score: 92 },
-                                  { time: "8:20 - 9:05", label: "Final Call to Action", score: 85 }
+                                  { time: "0:12 - 1:10", label: "Controversial Statement Hook", score: 98, type: "Retention Max" },
+                                  { time: "4:45 - 5:30", label: "Visual Revelation Bridge", score: 92, type: "Viral Bridge" },
+                                  { time: "8:20 - 9:05", label: "Final CTA Matrix", score: 85, type: "Conversion" }
                                 ].map((seg, i) => (
-                                  <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 group hover:bg-white/10 transition-all">
-                                    <div className="flex items-center gap-3">
-                                      <div className="text-[10px] font-black text-[#FF0000] tabular-nums">{seg.time}</div>
-                                      <span className="text-xs font-bold text-white">{seg.label}</span>
+                                  <div key={i} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 group hover:bg-white/10 transition-all">
+                                    <div className="flex items-center gap-4">
+                                      <div className="px-3 py-1 bg-[#FF0000]/10 rounded-lg text-[10px] font-black text-[#FF0000] tabular-nums">{seg.time}</div>
+                                      <div className="flex flex-col">
+                                          <span className="text-xs font-black text-slate-900 dark:text-white underline decoration-[#FF0000]/30">{seg.label}</span>
+                                          <span className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{seg.type}</span>
+                                      </div>
                                     </div>
-                                    <div className="text-[10px] font-black text-emerald-400">{seg.score}% POTENTIAL</div>
+                                    <div className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">{seg.score}% VIRAL SCORE</div>
                                   </div>
                                 ))}
                               </div>
