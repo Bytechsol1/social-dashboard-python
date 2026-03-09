@@ -946,6 +946,29 @@ export default function App() {
                             </div>
                           </Card>
 
+                          {/* Analyzed Videos List */}
+                          <Card className="bg-black border-white/5">
+                            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Analyzed Source Content</h3>
+                            <div className="space-y-4">
+                              {(data?.videos || []).slice(0, 4).map((vid: any) => (
+                                <div key={vid.id} className="flex items-center gap-4 p-3 bg-white/[0.02] rounded-2xl border border-white/5 group hover:border-[#FF0000]/30 transition-all cursor-pointer">
+                                  <div className="w-16 h-10 bg-slate-800 rounded-lg overflow-hidden shrink-0 relative">
+                                    <div className="absolute inset-x-0 bottom-0 h-1 bg-[#FF0000]" style={{ width: '85%' }} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-black text-white truncate">{vid.title}</p>
+                                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{vid.view_count.toLocaleString()} VIEWS • 3 SHORTS DETECTED</p>
+                                  </div>
+                                </div>
+                              ))}
+                              {(!data?.videos || data.videos.length === 0) && (
+                                <div className="py-6 text-center">
+                                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Connect YouTube to see video analysis</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+
                           {/* Performance Matrix (replaces infinite spinner) */}
                           <Card>
                             <h3 className="font-black text-slate-900 dark:text-white tracking-tight mb-6">Performance Matrix</h3>
