@@ -86,16 +86,32 @@ except Exception as e:
     BOOT_ERROR = traceback.format_exc()
     print(f"[BOOT FATAL] {BOOT_ERROR}")
 
+@app.on_event("startup")
+def on_startup():
+    """Ensure DB schema is initialized on startup."""
+    try:
+        from api.database import init_db
+        init_db()
+        print("[BOOT] Database initialized successfully.")
+    except Exception as e:
+        print(f"[BOOT ERROR] Database initialization failed: {e}")
+
 @app.get("/api/health")
 def health_check():
-    """Diagnostic route to verify server is up without DB access."""
+    """Diagnostic route to verify server is up and DB is connected."""
+    from api.database import get_storage_engine
+    
+    status = "healthy"
     if BOOT_ERROR:
-        return {
-            "status": "boot_failure",
-            "error": "Backend failed to initialize routers",
-            "traceback": BOOT_ERROR
-        }
-    return {"status": "healthy", "service": "api", "routers_loaded": api_router is not None}
+        status = "boot_failure"
+    
+    return {
+        "status": status,
+        "service": "api",
+        "routers_loaded": api_router is not None,
+        "storage": get_storage_engine(),
+        "error": BOOT_ERROR
+    }
 
 if __name__ == "__main__":
     import uvicorn

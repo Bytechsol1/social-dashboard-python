@@ -38,10 +38,15 @@ async def perform_sync(user_id: str) -> dict:
 
     if not row:
         print(f"[SYNC] Aborted: User {user_id} not found in DB")
-        # Explicit info for Vercel
+        from api.database import get_storage_engine
+        engine = get_storage_engine()
+        
+        # Specific info for Vercel
         msg = "skipped: user not in db"
-        if os.environ.get("VERCEL") == "1":
+        if engine == "sqlite_memory":
             msg += " (No DATABASE_URL set on Vercel. Persistence is required for OAuth tokens)"
+        else:
+            msg += " (User not found in persistent database. Please re-connect metrics in Settings.)"
         return {"youtube": msg, "manychat": msg}
 
     user = dict(row)

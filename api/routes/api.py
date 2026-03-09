@@ -310,14 +310,16 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
     if not user_id:
         user_id = _get_user_id(request)
 
-    # 1. Resilience: If DB is missing on Vercel, return clear status instead of crash
-    if not DB_PATH.exists() and os.environ.get("VERCEL") == "1":
+    # 1. Resilience: Report storage type
+    from api.database import get_storage_engine
+    storage = get_storage_engine()
+    
+    if storage == "sqlite_memory":
         return {
             "summary": {"total_views": 0, "total_subscribers": 0, "active_automations": 0, "avg_ctr": 0},
-            "chartData": [],
-            "automations": [],
-            "videos": [],
-            "status": "Healthy (DB missing - please configure DATABASE_URL)"
+            "chartData": [], "automations": [], "videos": [],
+            "status": "Healthy (Internal Memory Only)",
+            "storage": storage
         }
 
     try:
@@ -445,6 +447,7 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
         "automations":  automations,
         "interactions": interactions,
         "videos":       videos,
+        "storage":      storage
     }
 
 

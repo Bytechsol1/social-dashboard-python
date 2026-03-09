@@ -14,6 +14,23 @@ _schema_lock = threading.Lock()
 # For Vercel, we bridge to Postgres (Neon / Supabase) via DATABASE_URL.
 DB_PATH = (Path(__file__).parent.parent / "social_intel.db").resolve()
 
+class PostgresRow:
+    """A row wrapper that allows conversion to dict, matching sqlite3.Row."""
+    def __init__(self, colnames, values):
+        self._data = dict(zip(colnames, values))
+    
+    def __getitem__(self, key):
+        return self._data[key]
+    
+    def keys(self):
+        return self._data.keys()
+
+    def __iter__(self):
+        return iter(self._data.keys())
+
+    def get(self, key, default=None):
+        return self._data.get(key, default)
+
 class PostgresWrapper:
     """Minimal shim to make Postgres look like SQLite (row_factory, executescript)."""
     def __init__(self, conn):
@@ -25,11 +42,9 @@ class PostgresWrapper:
     def execute(self, sql, params=None):
         # Translate SQLite ? to Postgres %s
         sql = sql.replace("?", "%s")
-        # Handle 'ON CONFLICT' syntax differences if necessary, 
-        # but for now we'll stick to basic SQL or use try/except.
         cur = self.conn.cursor()
         cur.execute(sql, params)
-        return cur
+        return PostgresCursorWrapper(cur)
 
     def executescript(self, sql):
         # Postgres doesnt have executescript, we split by semicolon
@@ -48,27 +63,57 @@ class PostgresWrapper:
     def close(self):
         self.conn.close()
 
-def get_connection() -> sqlite3.Connection:
-    """Return a new SQLite connection with row_factory set.
-    Optimized for Vercel/stateless environments.
+class PostgresCursorWrapper:
+    """Wrapper for pg8000 cursor to mimic sqlite3.Row results."""
+    def __init__(self, cursor):
+        self.cursor = cursor
+    
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        if not row: return None
+        colnames = [desc[0].decode() if isinstance(desc[0], bytes) else desc[0] for desc in self.cursor.description]
+        return PostgresRow(colnames, row)
+    
+    def fetchall(self):
+        rows = self.cursor.fetchall()
+        if not rows: return []
+        colnames = [desc[0].decode() if isinstance(desc[0], bytes) else desc[0] for desc in self.cursor.description]
+        return [PostgresRow(colnames, r) for r in rows]
+
+def get_storage_engine() -> str:
+    """Diagnostics helper to see what DB we are actually using."""
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url: return "postgres"
+    if os.environ.get("VERCEL") == "1": return "sqlite_memory"
+    return "sqlite_disk"
+
+def get_connection():
+    """Return a new SQLite or Postgres connection.
+    Hardened for Vercel/stateless environments.
     """
     is_vercel = os.environ.get("VERCEL") == "1"
-    
     db_url = os.environ.get("DATABASE_URL")
+
     if db_url:
         try:
             import pg8000
-            # Parse connection string
-            # Handle 'postgres://' vs 'postgresql://' for different providers
+            import urllib.parse
+            
+            # Robust parsing for complex passwords
             db_url = db_url.replace("postgres://", "postgresql://")
-            conn = pg8000.connect(dsn=db_url)
-            # Add a row_factory equivalent
-            # In pg8000 we can use a custom column factory but for simplicity we wrap it
+            result = urllib.parse.urlparse(db_url)
+            
+            conn = pg8000.connect(
+                user=result.username,
+                password=result.password,
+                host=result.hostname,
+                port=result.port or 5432,
+                database=result.path.lstrip('/'),
+                ssl_context=True if "supabase" in db_url or "neon" in db_url else None
+            )
             return PostgresWrapper(conn)
         except Exception as e:
-            print(f"[DB ERROR] Failed to connect to Postgres: {e}")
-            # Fallback to sqlite (memory)
-            pass
+            print(f"[DB ERROR] Postgres failed: {e}. Falling back...")
 
     try:
         # On Vercel, we MUST NOT attempt to connect if the file doesn't exist,
