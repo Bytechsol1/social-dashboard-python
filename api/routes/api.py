@@ -21,18 +21,19 @@ GOOGLE_CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 
 def _get_redirect_uri(request: Request) -> str:
-    """Dynamically determine the redirect URI based on headers / config.
-    Ensures that deployment URLs and custom project URLs both work correctly.
-    """
-    # 1. Prioritize explicit environment variable
+    """Determine the redirect URI. Hardened for Vercel production."""
+    # 1. Force production URL on Vercel to match Google Cloud Console EXACTLY
+    if os.environ.get("VERCEL") == "1":
+        return "https://social-dashboard-python.vercel.app/api/auth/youtube/callback"
+    
+    # 2. Local fallback
     configured_url = os.environ.get("APP_URL")
     if configured_url:
         return f"{configured_url.rstrip('/')}/api/auth/youtube/callback"
     
-    # 2. Detect from request headers (Robust for Vercel/proxies)
+    # 3. Dynamic detection for dev/previews
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:3000"
-    proto = request.headers.get("x-forwarded-proto") or ("https" if os.environ.get("VERCEL") == "1" else "http")
-    
+    proto = request.headers.get("x-forwarded-proto") or "http"
     return f"{proto}://{host}/api/auth/youtube/callback"
 
 # Only 2 stable scopes — monetary scope requires extra approval and causes invalid_scope
@@ -105,7 +106,15 @@ def youtube_callback(code: str, request: Request):
         encrypted_refresh = encrypt(creds.refresh_token) if creds.refresh_token else None
 
         with get_db() as conn:
-                conn.execute("INSERT OR IGNORE INTO users (id) VALUES (?)", (user_id,))
+            # Use UPSERT: insert/update the user record. 
+            # This is critical for ephemeral in-memory databases on Vercel.
+            conn.execute(
+                """
+                INSERT INTO users (id, yt_refresh_token) VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET yt_refresh_token = excluded.yt_refresh_token
+                """,
+                (user_id, encrypted_refresh),
+            )
 
         return HTMLResponse(content="""
             <html><body>
