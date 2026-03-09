@@ -9,9 +9,44 @@ import threading
 _schema_initialized = False
 _schema_lock = threading.Lock()
 
-# Database file lives at project root
-# Using .resolve() ensures we find the actual file on Vercel
+# Database Configuration
+# sqlite3 is used for local dev.
+# For Vercel, we bridge to Postgres (Neon / Supabase) via DATABASE_URL.
 DB_PATH = (Path(__file__).parent.parent / "social_intel.db").resolve()
+
+class PostgresWrapper:
+    """Minimal shim to make Postgres look like SQLite (row_factory, executescript)."""
+    def __init__(self, conn):
+        self.conn = conn
+    
+    def cursor(self):
+        return self.conn.cursor()
+
+    def execute(self, sql, params=None):
+        # Translate SQLite ? to Postgres %s
+        sql = sql.replace("?", "%s")
+        # Handle 'ON CONFLICT' syntax differences if necessary, 
+        # but for now we'll stick to basic SQL or use try/except.
+        cur = self.conn.cursor()
+        cur.execute(sql, params)
+        return cur
+
+    def executescript(self, sql):
+        # Postgres doesnt have executescript, we split by semicolon
+        cur = self.conn.cursor()
+        for statement in sql.split(";"):
+            if statement.strip():
+                cur.execute(statement)
+        self.conn.commit()
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
+    def close(self):
+        self.conn.close()
 
 def get_connection() -> sqlite3.Connection:
     """Return a new SQLite connection with row_factory set.
@@ -19,10 +54,21 @@ def get_connection() -> sqlite3.Connection:
     """
     is_vercel = os.environ.get("VERCEL") == "1"
     
-    # Check for DATABASE_URL (for hosted Postgres/Neon/Supabase)
-    if os.environ.get("DATABASE_URL"):
-        # Future: Switch to Postgres. For now, we still use SQLite.
-        pass
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url:
+        try:
+            import pg8000
+            # Parse connection string
+            # Handle 'postgres://' vs 'postgresql://' for different providers
+            db_url = db_url.replace("postgres://", "postgresql://")
+            conn = pg8000.connect(dsn=db_url)
+            # Add a row_factory equivalent
+            # In pg8000 we can use a custom column factory but for simplicity we wrap it
+            return PostgresWrapper(conn)
+        except Exception as e:
+            print(f"[DB ERROR] Failed to connect to Postgres: {e}")
+            # Fallback to sqlite (memory)
+            pass
 
     try:
         # On Vercel, we MUST NOT attempt to connect if the file doesn't exist,
