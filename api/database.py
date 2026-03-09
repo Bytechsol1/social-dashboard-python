@@ -60,6 +60,20 @@ def get_connection() -> sqlite3.Connection:
             return conn
         raise
 
+@contextmanager
+def get_db():
+    """Context manager for SQLite connections with auto-commit/close."""
+    conn = get_connection()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def _init_schema(conn: sqlite3.Connection):
     """Internal helper to shared schema logic without recursion."""
     conn.executescript("""
