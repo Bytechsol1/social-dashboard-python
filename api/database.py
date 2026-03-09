@@ -161,16 +161,22 @@ def get_db():
         conn.close()
 
 
-def _init_schema(conn: sqlite3.Connection):
+def _init_schema(conn):
     """Internal helper to shared schema logic without recursion."""
-    conn.executescript("""
+    # Detect if we are using Postgres or SQLite
+    is_postgres = hasattr(conn, "conn") and conn.__class__.__name__ == "PostgresWrapper"
+    
+    # SQLite uses AUTOINCREMENT, Postgres uses SERIAL
+    id_type = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    
+    conn.executescript(f"""
         CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
             email TEXT UNIQUE,
             yt_refresh_token TEXT,
             manychat_key TEXT,
             youtube_channel_id TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS metrics (
             id TEXT PRIMARY KEY,
@@ -188,15 +194,15 @@ def _init_schema(conn: sqlite3.Connection):
             subscriber_id TEXT,
             type TEXT,
             details TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS sync_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             user_id TEXT,
             status TEXT,
             message TEXT,
             flow_id TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS manychat_automations (
             id TEXT PRIMARY KEY,
@@ -207,15 +213,15 @@ def _init_schema(conn: sqlite3.Connection):
             clicks INTEGER DEFAULT 0,
             ctr REAL DEFAULT 0,
             last_modified TEXT,
-            synced_at DATETIME,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            synced_at TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS manychat_pings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             user_id TEXT,
             automation_id TEXT,
             type TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS youtube_videos (
             id TEXT PRIMARY KEY,
@@ -226,7 +232,7 @@ def _init_schema(conn: sqlite3.Connection):
             like_count INTEGER DEFAULT 0,
             comment_count INTEGER DEFAULT 0,
             thumbnail_url TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
     # Run migrations on this conn as well
@@ -246,7 +252,7 @@ def _safe_migrate_conn(conn: sqlite3.Connection):
     migrations = [
         ("users",                  "youtube_channel_id", "TEXT"),
         ("sync_logs",              "flow_id",            "TEXT"),
-        ("manychat_automations",   "synced_at",          "DATETIME"),
+        ("manychat_automations",   "synced_at",          "TIMESTAMP"),
         ("manychat_automations",   "clicks",             "INTEGER DEFAULT 0"),
     ]
     for table, column, col_type in migrations:
