@@ -50,13 +50,9 @@ def get_connection() -> sqlite3.Connection:
             conn = sqlite3.connect(":memory:")
             conn.row_factory = sqlite3.Row
             
-            # Use lock to prevent race conditions during cold start
-            global _schema_initialized
-            with _schema_lock:
-                if not _schema_initialized:
-                    print("[DB INFO] Initializing schema for new serverless instance...")
-                    _init_schema(conn)
-                    _schema_initialized = True
+            # CRITICAL: Since :memory: DBs are connection-isolated, we MUST
+            # initialize the schema for every new connection in this mode.
+            _init_schema(conn)
             return conn
         raise
 
