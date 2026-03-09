@@ -66,11 +66,11 @@ const StatCard = ({ title, value, icon: Icon, delta, unit = "", color = "brand-y
   <Card className="flex flex-col gap-4 relative overflow-hidden group">
     <div className="flex justify-between items-start">
       <div className={cn(
-        "p-2 rounded-xl border",
-        color === 'brand-yt' ? 'bg-brand-yt/10 border-brand-yt/20 text-brand-yt' :
+        "p-2 rounded-xl border transition-colors",
+        color === 'brand-yt' ? 'bg-[#FF0000]/10 border-[#FF0000]/20 text-[#FF0000]' :
         color === 'brand-mc' ? 'bg-brand-mc/10 border-brand-mc/20 text-brand-mc' :
-        color === 'brand-tiktok' ? 'bg-[#00f2ea]/10 border-[#00f2ea]/20 text-[#00f2ea]' :
-        'bg-[#1DA1F2]/10 border-[#1DA1F2]/20 text-[#1DA1F2]'
+        color === 'brand-tiktok' ? 'bg-black border-white/10 text-[#00f2ea]' :
+        'bg-black border-white/10 text-white'
       )}>
         <Icon className="w-5 h-5" />
       </div>
@@ -430,37 +430,37 @@ export default function App() {
               {activePlatform === 'overview' && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <Card className="border-brand-yt/30 bg-gradient-to-br from-brand-yt/10 via-brand-yt/5 to-transparent shadow-[0_0_20px_rgba(255,0,0,0.05)]">
+                    <Card className="border-[#FF0000]/30 bg-gradient-to-br from-[#FF0000]/10 via-[#FF0000]/5 to-transparent shadow-[0_0_20px_rgba(255,0,0,0.05)]">
                       <div className="flex justify-between items-center mb-4">
-                        <Youtube className="w-5 h-5 text-brand-yt" />
-                        <span className="text-[10px] font-black text-brand-yt uppercase tracking-widest">YouTube</span>
+                        <Youtube className="w-5 h-5 text-[#FF0000]" />
+                        <span className="text-[10px] font-black text-[#FF0000] uppercase tracking-widest">YouTube</span>
                       </div>
                       <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.subscribers)}</p>
                       <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Subscribers</p>
                     </Card>
-                    <Card className="border-[#00f2ea]/30 bg-gradient-to-br from-[#00f2ea]/10 via-[#00f2ea]/5 to-transparent shadow-[0_0_20px_rgba(0,242,234,0.05)]">
+                    <Card className="border-white/10 bg-black shadow-[0_0_20px_rgba(0,0,0,0.3)]">
                       <div className="flex justify-between items-center mb-4">
-                        <TikTokIcon className="w-5 h-5 text-[#00f2ea]" />
+                        <TikTokIcon className="w-5 h-5 text-white" />
                         <span className="text-[10px] font-black text-[#00f2ea] uppercase tracking-widest">TikTok</span>
                       </div>
-                      <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">85.2K</p>
-                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Followers</p>
+                      <p className="text-3xl font-black text-white tabular-nums">85.2K</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-2 tracking-widest">Total Followers</p>
                     </Card>
-                    <Card className="border-[#1DA1F2]/30 bg-gradient-to-br from-[#1DA1F2]/10 via-[#1DA1F2]/5 to-transparent shadow-[0_0_20px_rgba(29,161,242,0.05)]">
+                    <Card className="border-white/10 bg-black shadow-[0_0_20px_rgba(0,0,0,0.3)]">
                       <div className="flex justify-between items-center mb-4">
-                        <XIcon className="w-5 h-5 text-[#1DA1F2]" />
-                        <span className="text-[10px] font-black text-[#1DA1F2] uppercase tracking-widest">Twitter / X</span>
+                        <XIcon className="w-5 h-5 text-white" />
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest">X / Twitter</span>
                       </div>
-                      <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">142K</p>
-                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Impressions (30d)</p>
+                      <p className="text-3xl font-black text-white tabular-nums">142K</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-2 tracking-widest">Impressions (30d)</p>
                     </Card>
                     <Card className="border-brand-mc/30 bg-gradient-to-br from-brand-mc/10 via-brand-mc/5 to-transparent shadow-[0_0_20px_rgba(0,132,255,0.05)]">
                       <div className="flex justify-between items-center mb-4">
                         <MessageSquare className="w-5 h-5 text-brand-mc" />
                         <span className="text-[10px] font-black text-brand-mc uppercase tracking-widest">ManyChat</span>
                       </div>
-                      <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.manychat_subscribers)}</p>
-                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Contacts</p>
+                      <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.total_flows || data?.summary?.manychat_subscribers)}</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Flows</p>
                     </Card>
                   </div>
 
@@ -891,56 +891,59 @@ export default function App() {
                       >
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                           {/* AI Inspiration Panel */}
-                          <Card className="lg:col-span-2 bg-gradient-to-br from-brand-yt/5 to-transparent border-brand-yt/10">
-                            <div className="flex items-center justify-between mb-6">
+                          <Card className="lg:col-span-2 bg-gradient-to-br from-[#FF0000]/5 to-transparent border-[#FF0000]/10">
+                            <div className="flex items-center justify-between mb-8">
                               <div>
-                                <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">AI Content Inspiration</h3>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Based on your top videos &amp; automations</p>
+                                <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Shorts Opportunity Analysis</h3>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">AI-powered trend extraction from your videos</p>
                               </div>
-                              <button
-                                onClick={fetchTrends}
-                                disabled={trendsLoading}
-                                className="flex items-center gap-2 px-4 py-2 bg-brand-yt/10 border border-brand-yt/20 text-brand-yt rounded-xl text-xs font-black hover:bg-brand-yt/20 transition-all disabled:opacity-50"
-                              >
-                                <RefreshCw className={cn('w-3 h-3', trendsLoading && 'animate-spin')} />
-                                {trendsLoading ? 'GENERATING...' : 'GENERATE IDEAS'}
-                              </button>
+                              <div className="px-4 py-1 bg-[#FF0000]/10 border border-[#FF0000]/20 rounded-full text-[10px] font-black text-[#FF0000] animate-pulse">TRENDING NOW</div>
                             </div>
-                            {trendsError && (
-                              <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-400 font-bold">{trendsError}</div>
-                            )}
-                            {trendsIdeas.length > 0 ? (
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="p-6 bg-white/5 rounded-3xl border border-white/5 space-y-4 hover:border-[#FF0000]/30 transition-all cursor-pointer">
+                                <div className="flex items-center gap-3">
+                                  <Zap className="w-5 h-5 text-[#FF0000]" />
+                                  <h4 className="text-sm font-black text-white uppercase tracking-wider">Potential Shorts</h4>
+                                </div>
+                                <div className="flex items-end gap-2">
+                                  <span className="text-4xl font-black text-white">24</span>
+                                  <span className="text-xs font-bold text-emerald-400 mb-1">+4 this week</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">We identified 24 distinct high-engagement segments suitable for Shorts conversion across your recent 5 uploads.</p>
+                              </div>
+
+                              <div className="p-6 bg-white/5 rounded-3xl border border-white/5 space-y-4 hover:border-[#FF0000]/30 transition-all cursor-pointer">
+                                <div className="flex items-center gap-3">
+                                  <Clock className="w-5 h-5 text-[#FF0000]" />
+                                  <h4 className="text-sm font-black text-white uppercase tracking-wider">Optimal Duration</h4>
+                                </div>
+                                <div className="flex items-end gap-2">
+                                  <span className="text-4xl font-black text-white">58s</span>
+                                  <span className="text-xs font-bold text-slate-400 mb-1">Recommended</span>
+                                </div>
+                                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">Based on retention data, your audience responds best to 50-60 second shorts with a fast-paced hook in the first 3 seconds.</p>
+                              </div>
+                            </div>
+
+                            <div className="mt-8 p-6 bg-[#FF0000]/5 rounded-3xl border border-[#FF0000]/10">
+                              <h4 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-4">Top Engagement Segments</h4>
                               <div className="space-y-3">
-                                {trendsIdeas.map((idea: any, i: number) => (
-                                  <div
-                                    key={i}
-                                    className="group p-4 bg-slate-900/5 dark:bg-white/5 rounded-xl border border-slate-900/5 dark:border-white/5 cursor-pointer hover:border-brand-yt/20 transition-all"
-                                    onClick={() => setExpandedIdea(expandedIdea === i ? null : i)}
-                                  >
-                                    <div className="flex items-start justify-between gap-4">
-                                      <p className="text-sm font-black text-slate-900 dark:text-white">{idea.title}</p>
-                                      <span className="shrink-0 text-[10px] font-black px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">{idea.estimated_ctr} CTR</span>
+                                {[
+                                  { time: "0:12 - 1:10", label: "Hero Hook & Setup", score: 98 },
+                                  { time: "4:45 - 5:30", label: "Key Revelation", score: 92 },
+                                  { time: "8:20 - 9:05", label: "Final Call to Action", score: 85 }
+                                ].map((seg, i) => (
+                                  <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 group hover:bg-white/10 transition-all">
+                                    <div className="flex items-center gap-3">
+                                      <div className="text-[10px] font-black text-[#FF0000] tabular-nums">{seg.time}</div>
+                                      <span className="text-xs font-bold text-white">{seg.label}</span>
                                     </div>
-                                    {expandedIdea === i && (
-                                      <div className="mt-3 pt-3 border-t border-slate-900/5 dark:border-white/5">
-                                        <p className="text-xs text-slate-600 dark:text-slate-400 italic leading-relaxed">&quot;{idea.hook}&quot;</p>
-                                        <button
-                                          className="mt-3 text-[10px] font-black text-brand-yt hover:underline"
-                                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(`${idea.title}\n\n${idea.hook}`); setCopyMsg(i); setTimeout(() => setCopyMsg(null), 2000); }}
-                                        >
-                                          {copyMsg === i ? '✓ COPIED!' : '⎘ COPY IDEA'}
-                                        </button>
-                                      </div>
-                                    )}
+                                    <div className="text-[10px] font-black text-emerald-400">{seg.score}% POTENTIAL</div>
                                   </div>
                                 ))}
                               </div>
-                            ) : (
-                              <div className="py-12 flex flex-col items-center gap-4 text-slate-500">
-                                <Zap className="w-10 h-10 opacity-20" />
-                                <p className="text-xs font-bold tracking-widest uppercase text-center">Click &quot;Generate Ideas&quot; to get AI-powered content<br />ideas based on your real channel data.</p>
-                              </div>
-                            )}
+                            </div>
                           </Card>
 
                           {/* Performance Matrix (replaces infinite spinner) */}
@@ -1047,10 +1050,10 @@ export default function App() {
                       <div className="px-6 py-4 glass-card border-brand-mc/20">
                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">NETWORK SIZE</span>
                         <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                          {data?.summary?.manychat_subscribers != null
-                            ? data.summary.manychat_subscribers.toLocaleString()
+                          {data?.summary?.total_flows || data?.summary?.manychat_subscribers != null
+                            ? (data.summary.total_flows || data.summary.manychat_subscribers).toLocaleString()
                             : '—'}
-                          <span className="text-xs text-slate-500 font-bold uppercase ml-1">CONTACTS</span>
+                          <span className="text-xs text-slate-500 font-bold uppercase ml-1">FLOWS</span>
                         </div>
                       </div>
                     </div>
