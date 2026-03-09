@@ -82,12 +82,8 @@ def get_youtube_auth_url(request: Request):
     redirect_uri = _get_redirect_uri(request)
     flow = _make_flow(redirect_uri)
     auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
-    return {
-        "url": auth_url,
-        "redirect_uri": redirect_uri,
-        "client_id": GOOGLE_CLIENT_ID,
-        "note": "Ensure this EXACT redirect_uri and client_id are configured in your Google Cloud Console."
-    }
+    # Matching the clean local JSON format
+    return {"url": auth_url}
 
 
 @router.get("/auth/youtube/callback")
@@ -109,15 +105,6 @@ def youtube_callback(code: str, request: Request):
         encrypted_refresh = encrypt(creds.refresh_token) if creds.refresh_token else None
 
         with get_db() as conn:
-            if encrypted_refresh:
-                conn.execute(
-                    """
-                    INSERT INTO users (id, yt_refresh_token) VALUES (?, ?)
-                    ON CONFLICT(id) DO UPDATE SET yt_refresh_token = excluded.yt_refresh_token
-                    """,
-                    (user_id, encrypted_refresh),
-                )
-            else:
                 conn.execute("INSERT OR IGNORE INTO users (id) VALUES (?)", (user_id,))
 
         return HTMLResponse(content="""
