@@ -337,14 +337,14 @@ export default function App() {
 
           <button
             onClick={() => { setShowSettings(false); setActivePlatform('tiktok'); }}
-            className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'tiktok' ? "bg-slate-900/10 dark:bg-white/10 text-[#00f2ea] shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
+            className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'tiktok' ? "bg-slate-900/10 dark:bg-white/10 text-[#00DFEF] shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
             title="TikTok Analytics"
           >
             <div className="relative">
               <TikTokIcon className="w-6 h-6" />
               <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[#ff0050] rounded-full animate-pulse" />
             </div>
-            {!showSettings && activePlatform === 'tiktok' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-[#00f2ea]/20 blur-xl -z-10" />}
+            {!showSettings && activePlatform === 'tiktok' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-[#00DFEF]/20 blur-xl -z-10" />}
           </button>
 
           <button
@@ -376,7 +376,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="mt-auto flex flex-col gap-4">
+        <div className="mt-auto hidden lg:flex flex-col gap-4">
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-3 rounded-xl bg-slate-900/5 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:text-white transition-all border border-transparent hover:border-slate-900/10 dark:hover:border-white/10"
@@ -385,6 +385,14 @@ export default function App() {
             {theme === 'dark' ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
           </button>
         </div>
+
+        {/* Mobile Theme Toggle */}
+        <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="lg:hidden p-3 rounded-xl text-slate-500"
+        >
+          {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
       </nav>
 
       {/* Main Content */}
@@ -407,7 +415,7 @@ export default function App() {
                 "w-2 h-2 rounded-full",
                 activePlatform === 'overview' ? 'bg-emerald-400' :
                   activePlatform === 'youtube' ? 'bg-brand-yt' :
-                    activePlatform === 'tiktok' ? 'bg-[#00f2ea]' :
+                    activePlatform === 'tiktok' ? 'bg-[#00DFEF]' :
                       activePlatform === 'twitter' ? 'bg-[#1DA1F2]' : 'bg-brand-mc'
               )} />
             </h1>
@@ -444,13 +452,13 @@ export default function App() {
                       <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.subscribers)}</p>
                       <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Total Subscribers</p>
                     </Card>
-                    <Card className="border-[#00f2ea]/30 bg-gradient-to-br from-[#00f2ea]/10 via-[#ff0050]/5 to-transparent shadow-[0_0_20px_rgba(0,242,234,0.1)]">
+                    <Card className="border-[#00DFEF]/40 bg-gradient-to-br from-[#00DFEF]/20 via-[#00DFEF]/5 to-transparent shadow-[0_0_30px_rgba(0,223,239,0.15)]">
                       <div className="flex justify-between items-center mb-4">
-                        <TikTokIcon className="w-5 h-5 text-[#00f2ea]" />
-                        <span className="text-[10px] font-black text-[#ff0050] uppercase tracking-widest">TikTok Matrix</span>
+                        <TikTokIcon className="w-5 h-5 text-[#00DFEF]" />
+                        <span className="text-[10px] font-black text-[#00DFEF] uppercase tracking-widest">TikTok Neural</span>
                       </div>
-                      <p className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">85.2K</p>
-                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Neural Retention Rate</p>
+                      <p className="text-3xl font-black text-[#00DFEF] dark:text-[#00DFEF] tabular-nums">85.2K</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">Engagement Matrix Score</p>
                     </Card>
                     <Card className="border-slate-700 bg-gradient-to-br from-slate-900 to-slate-800 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
                       <div className="flex justify-between items-center mb-4">
@@ -968,6 +976,11 @@ export default function App() {
                               {(data?.videos || []).slice(0, 4).map((vid: any) => (
                                 <div key={vid.id} className="flex items-center gap-4 p-3 bg-white/[0.02] rounded-2xl border border-white/5 group hover:border-[#FF0000]/30 transition-all cursor-pointer">
                                   <div className="w-16 h-10 bg-slate-800 rounded-lg overflow-hidden shrink-0 relative">
+                                    {vid.thumbnail_url ? (
+                                      <img src={vid.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="w-full h-full bg-slate-800" />
+                                    )}
                                     <div className="absolute inset-x-0 bottom-0 h-1 bg-[#FF0000]" style={{ width: '85%' }} />
                                   </div>
                                   <div className="flex-1 min-w-0">
