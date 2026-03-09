@@ -20,13 +20,20 @@ router = APIRouter()
 GOOGLE_CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 
-# Robust URL detection for Vercel vs Local
-APP_URL = os.environ.get("APP_URL") or os.environ.get("VERCEL_URL") or "http://localhost:3000"
-if "://" not in APP_URL:
-    APP_URL = f"https://{APP_URL}"
-APP_URL = APP_URL.rstrip("/")
-
-REDIRECT_URI = f"{APP_URL}/api/auth/youtube/callback"
+def _get_redirect_uri(request: Request) -> str:
+    """Dynamically determine the redirect URI based on headers / config.
+    Ensures that deployment URLs and custom project URLs both work correctly.
+    """
+    # 1. Prioritize explicit environment variable
+    configured_url = os.environ.get("APP_URL")
+    if configured_url:
+        return f"{configured_url.rstrip('/')}/api/auth/youtube/callback"
+    
+    # 2. Detect from request headers (Robust for Vercel/proxies)
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:3000"
+    proto = request.headers.get("x-forwarded-proto") or ("https" if os.environ.get("VERCEL") == "1" else "http")
+    
+    return f"{proto}://{host}/api/auth/youtube/callback"
 
 # Only 2 stable scopes — monetary scope requires extra approval and causes invalid_scope
 YOUTUBE_SCOPES = [
@@ -41,7 +48,7 @@ def _get_user_id(request: Request) -> str:
     return uid
 
 
-def _make_flow() -> "Flow":
+def _make_flow(redirect_uri: str) -> "Flow":
     """Build a Google OAuth Flow with consistent scopes + no PKCE."""
     from google_auth_oauthlib.flow import Flow
     flow = Flow.from_client_config(
@@ -55,7 +62,7 @@ def _make_flow() -> "Flow":
         },
         scopes=YOUTUBE_SCOPES,
     )
-    flow.redirect_uri = REDIRECT_URI
+    flow.redirect_uri = redirect_uri
     # Disable PKCE — stateless backend cannot validate code verifier
     flow.code_verifier = None
     try:
@@ -68,22 +75,26 @@ def _make_flow() -> "Flow":
 # ── YouTube Auth ─────────────────────────────────────────────────────────────
 
 @router.get("/auth/youtube/url")
-def get_youtube_auth_url():
+def get_youtube_auth_url(request: Request):
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(status_code=503, detail="YouTube API credentials missing in environment variables.")
-    flow = _make_flow()
+    
+    redirect_uri = _get_redirect_uri(request)
+    flow = _make_flow(redirect_uri)
     auth_url, _ = flow.authorization_url(prompt="consent", access_type="offline")
     return {
         "url": auth_url,
-        "redirect_uri": REDIRECT_URI,
-        "note": "Ensure this redirect_uri is added to your Google Cloud Console Authorized Redirect URIs."
+        "redirect_uri": redirect_uri,
+        "client_id": GOOGLE_CLIENT_ID,
+        "note": "Ensure this EXACT redirect_uri and client_id are configured in your Google Cloud Console."
     }
 
 
 @router.get("/auth/youtube/callback")
 def youtube_callback(code: str, request: Request):
     user_id = _get_user_id(request)
-    flow = _make_flow()
+    redirect_uri = _get_redirect_uri(request)
+    flow = _make_flow(redirect_uri)
 
     try:
         flow.autogenerate_code_verifier = False

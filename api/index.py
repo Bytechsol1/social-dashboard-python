@@ -59,7 +59,7 @@ async def global_exception_handler(request, exc):
         }
     )
 
-# AGGRESSIVE DIAGNOSTIC MODE
+# Router and Route Initialization
 BOOT_ERROR = None
 api_router = None
 debug_router = None
