@@ -38,7 +38,11 @@ async def perform_sync(user_id: str) -> dict:
 
     if not row:
         print(f"[SYNC] Aborted: User {user_id} not found in DB")
-        return {"youtube": "skipped", "manychat": "skipped"}
+        # Explicit info for Vercel
+        msg = "skipped: user not in db"
+        if os.environ.get("VERCEL") == "1":
+            msg += " (No DATABASE_URL set on Vercel. Persistence is required for OAuth tokens)"
+        return {"youtube": msg, "manychat": msg}
 
     user = dict(row)
     results = {"youtube": "skipped", "manychat": "skipped"}
