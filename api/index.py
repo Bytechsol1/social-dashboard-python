@@ -59,25 +59,43 @@ async def global_exception_handler(request, exc):
         }
     )
 
-# Initialize SQLite schema lazily — we don't use @app.on_event("startup") 
-# as it can cause timeouts on Vercel Hobby tier.
+# AGGRESSIVE DIAGNOSTIC MODE
+BOOT_ERROR = None
+api_router = None
+debug_router = None
 
-# DEFERRED ROUTER INCLUSION
 try:
-    from api.routes.api import router as api_router
-    from api.routes.debug import router as debug_router
-except ImportError:
-    from routes.api import router as api_router
-    from routes.debug import router as debug_router
+    # ── Router Inclusion ────────────────────────────────────────────────────────
+    try:
+        from api.routes.api import router as _api_router
+        from api.routes.debug import router as _debug_router
+        api_router = _api_router
+        debug_router = _debug_router
+    except ImportError:
+        from routes.api import router as _api_router
+        from routes.debug import router as _debug_router
+        api_router = _api_router
+        debug_router = _debug_router
 
-# Include routers with and without prefix for Vercel/Local compatibility
-app.include_router(api_router, prefix="/api")
-app.include_router(debug_router, prefix="/api/debug")
+    # Include routers
+    app.include_router(api_router, prefix="/api")
+    app.include_router(debug_router, prefix="/api/debug")
+    app.include_router(api_router) # Support missing /api prefix
+except Exception as e:
+    import traceback
+    BOOT_ERROR = traceback.format_exc()
+    print(f"[BOOT FATAL] {BOOT_ERROR}")
 
-# Vercel fallback: some environments pass the path WITHOUT the /api prefix 
-# after the rewrite. This ensures those requests still hit the right handlers.
-app.include_router(api_router)
-app.include_router(debug_router, prefix="/debug")
+@app.get("/api/health")
+def health_check():
+    """Diagnostic route to verify server is up without DB access."""
+    if BOOT_ERROR:
+        return {
+            "status": "boot_failure",
+            "error": "Backend failed to initialize routers",
+            "traceback": BOOT_ERROR
+        }
+    return {"status": "healthy", "service": "api", "routers_loaded": api_router is not None}
 
 if __name__ == "__main__":
     import uvicorn
