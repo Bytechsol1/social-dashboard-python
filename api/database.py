@@ -176,6 +176,8 @@ def _init_schema(conn):
             yt_refresh_token TEXT,
             manychat_key TEXT,
             youtube_channel_id TEXT,
+            ig_access_token TEXT,
+            ig_user_id TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS metrics (
@@ -234,6 +236,19 @@ def _init_schema(conn):
             thumbnail_url TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS instagram_media (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            caption TEXT,
+            media_type TEXT,
+            media_url TEXT,
+            permalink TEXT,
+            timestamp TIMESTAMP,
+            like_count INTEGER DEFAULT 0,
+            comments_count INTEGER DEFAULT 0,
+            view_count INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     """)
     # Run migrations on this conn as well
     _safe_migrate_conn(conn)
@@ -254,6 +269,9 @@ def _safe_migrate_conn(conn: sqlite3.Connection):
         ("sync_logs",              "flow_id",            "TEXT"),
         ("manychat_automations",   "synced_at",          "TIMESTAMP"),
         ("manychat_automations",   "clicks",             "INTEGER DEFAULT 0"),
+        ("users",                  "ig_access_token",     "TEXT"),
+        ("users",                  "ig_user_id",          "TEXT"),
+        ("users",                  "ig_audience_json",    "TEXT"),
     ]
     for table, column, col_type in migrations:
         try:

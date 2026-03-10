@@ -80,7 +80,6 @@ try:
     # Include routers
     app.include_router(api_router, prefix="/api")
     app.include_router(debug_router, prefix="/api/debug")
-    app.include_router(api_router) # Support missing /api prefix
 except Exception as e:
     import traceback
     BOOT_ERROR = traceback.format_exc()

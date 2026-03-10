@@ -93,15 +93,17 @@ class ManyChatService:
             name = f.get("name") or "Unnamed Flow"
 
             runs: int | None   = None
+            clicks: int | None = None
             ctr:  float | None = None
 
             # Stats object (Pro accounts may return this)
             stats = f.get("stats") or f.get("statistics") or {}
             if isinstance(stats, dict) and stats:
                 sent   = stats.get("sent")   or stats.get("sends")   or stats.get("total_sent")
-                clicks = stats.get("clicks") or stats.get("clicked") or stats.get("total_clicks")
+                clks = stats.get("clicks") or stats.get("clicked") or stats.get("total_clicks")
                 ctr_v  = stats.get("ctr")    or stats.get("click_through_rate") or stats.get("opened_rate")
                 if sent   is not None: runs = int(sent)
+                if clks   is not None: clicks = int(clks)
                 if ctr_v  is not None: ctr  = round(float(ctr_v) * (100 if float(ctr_v) <= 1 else 1), 2)
                 elif sent and clicks:  ctr  = round((int(clicks) / max(int(sent), 1)) * 100, 2)
 

@@ -157,6 +157,29 @@ def connect_manychat(request: Request, data: ManyChatKey):
     return {"success": True}
 
 
+# ── Instagram Auth ────────────────────────────────────────────────────────────
+
+class InstagramToken(BaseModel):
+    token: str
+
+
+@router.post("/auth/instagram")
+def connect_instagram(request: Request, data: InstagramToken):
+    print(f"[AUTH] Instagram connect request received for user: {_get_user_id(request)}")
+    from api.encryption import encrypt
+    user_id = _get_user_id(request)
+    encrypted_token = encrypt(data.token)
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO users (id, ig_access_token) VALUES (?, ?)
+            ON CONFLICT(id) DO UPDATE SET ig_access_token = excluded.ig_access_token
+            """,
+            (user_id, encrypted_token),
+        )
+    return {"success": True}
+
+
 # ── Sync Routes ─────────────────────────────────────────────────────────────
 
 @router.post("/sync")
@@ -344,36 +367,65 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
                 "SELECT * FROM manychat_interactions WHERE user_id = ? ORDER BY timestamp DESC LIMIT 20",
                 (user_id,)
             ).fetchall()]
+            ig_media = [dict(r) for r in conn.execute(
+                "SELECT * FROM instagram_media WHERE user_id = ? ORDER BY timestamp DESC LIMIT 20",
+                (user_id,)
+            ).fetchall()]
+            user_row = conn.execute(
+                "SELECT ig_audience_json FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+            ig_audience = json.loads(user_row["ig_audience_json"]) if user_row and user_row["ig_audience_json"] else None
+
     except Exception as e:
         print(f"[ERROR] get_dashboard DB failure: {e}")
-        return {"summary": {}, "chartData": [], "automations": [], "videos": [], "status": "error"}
+        return {
+            "summary": {}, "chartData": [], "automations": [], "videos": [], "status": "error",
+            "demographics": {"ageGender": {}, "countries": [], "subscriberTrend": [], "instagram": {"cities": [], "countries": [], "ageGender": {}}},
+            "logs": [], "interactions": [], "ig_media": [], "storage": storage
+        }
 
-    # ── Build time-series chart data (only daily YouTube metrics)
+    # ── Build time-series chart data (daily YouTube + Instagram metrics)
     chart_map: dict = {}
     for m in metrics:
-        if m["source"] != "youtube":
-            continue
-        if m.get("dimension", "none") != "none":
-            continue   # Skip demographic entries
-        d = m["date"]
-        if d not in chart_map:
-            chart_map[d] = {"date": d}
-        chart_map[d][f"youtube_{m['metric_name']}"] = m["value"]
+        if m["source"] == "youtube" and m.get("dimension", "none") == "none":
+             d = m["date"]
+             if d not in chart_map: chart_map[d] = {"date": d}
+             chart_map[d][f"youtube_{m['metric_name']}"] = m["value"]
+        elif m["source"] == "instagram" and m.get("dimension", "none") == "none":
+             d = m["date"]
+             if d not in chart_map: chart_map[d] = {"date": d}
+             chart_map[d][f"instagram_{m['metric_name']}"] = m["value"]
 
-    # ── Demographics (real data from youtube_demo source)
+    # ── Demographics
     age_gender_data: dict = {}
     country_data: list    = []
     subscriber_trend: list = []
 
-    demo_rows = [m for m in metrics if m["source"] == "youtube_demo"]
+    # Instagram Demographics (Priority)
+    ig_demographics = {"cities": [], "countries": [], "ageGender": {}}
+    if ig_audience:
+        for item in ig_audience:
+            name = item["name"]
+            values = item["values"][0]["value"]
+            if name == "audience_city":
+                ig_demographics["cities"] = sorted([{"city": k, "value": v} for k, v in values.items()], key=lambda x: x["value"], reverse=True)[:10]
+            elif name == "audience_country":
+                ig_demographics["countries"] = sorted([{"country": k, "views": v} for k, v in values.items()], key=lambda x: x["views"], reverse=True)[:10]
+            elif name == "audience_gender_age":
+                ig_demographics["ageGender"] = values
 
-    # Age/gender
+    # YouTube Demographics (Legacy)
+    demo_rows = [m for m in metrics if m["source"] == "youtube_demo"]
     for m in demo_rows:
         if m["metric_name"] == "viewerPercentage":
-            dim = m.get("dimension", "")  # e.g. "age18-24_male"
+            dim = m.get("dimension", "")
             age_gender_data[dim] = m["value"]
+        elif m["metric_name"] in ("subscribersGained", "subscribersLost"):
+            d = m["date"]
+            if d not in chart_map: chart_map[d] = {"date": d} # fallback
+            # We add to subscriber_trend later
 
-    # Country views — collect latest per country
+    # Country views
     country_map: dict = {}
     for m in demo_rows:
         if m["metric_name"] == "countryViews":
@@ -382,13 +434,11 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
                 country_map[country] = {"country": country, "views": m["value"], "date": m["date"]}
     country_data = sorted(country_map.values(), key=lambda x: x["views"], reverse=True)[:10]
 
-    # Subscriber gain/loss trend for retention card
     sub_map: dict = {}
     for m in demo_rows:
         if m["metric_name"] in ("subscribersGained", "subscribersLost"):
             d = m["date"]
-            if d not in sub_map:
-                sub_map[d] = {"date": d}
+            if d not in sub_map: sub_map[d] = {"date": d}
             sub_map[d][m["metric_name"]] = m["value"]
     subscriber_trend = sorted(sub_map.values(), key=lambda x: x["date"])[-30:]
 
@@ -396,17 +446,17 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
         "ageGender":       age_gender_data,
         "countries":       country_data,
         "subscriberTrend": subscriber_trend,
+        "instagram":       ig_demographics
     }
 
-    # ── Helpers for summary (using CORRECT metric names matching sync_engine)
+    # ── Helpers for summary
     def _latest(name: str, source: str = "youtube") -> Optional[float]:
         matches = [
             m for m in metrics
             if m["metric_name"] == name and m["source"] == source
                and m.get("dimension", "none") == "none"
         ]
-        if not matches:
-            return None
+        if not matches: return None
         return float(sorted(matches, key=lambda x: x["date"], reverse=True)[0]["value"])
 
     def _sum(name: str, source: str = "youtube") -> Optional[float]:
@@ -415,12 +465,10 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
             if m["metric_name"] == name and m["source"] == source
                and m.get("dimension", "none") == "none"
         ]
-        if not vals:
-            return None
+        if not vals: return 0.0
         return float(sum(vals))
 
     summary = {
-        # YouTube metrics — keys match what sync_engine writes
         "recent_views":           _sum("views"),
         "total_views":            _latest("total_views"),
         "total_videos":           _latest("total_videos"),
@@ -429,14 +477,18 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
         "revenue":                _sum("revenue"),
         "subscribers":            _latest("total_subscribers"),
         "watch_time_minutes":     _sum("watch_time_minutes"),
-        "avg_view_duration":      _latest("avg_view_duration"),
-        # ManyChat metrics — MUST match frontend key names exactly
+        # ManyChat 
         "manychat_subscribers":   _latest("manychat_subscribers",     source="manychat"),
         "active_widgets":         _latest("manychat_active_widgets",  source="manychat"),
-        "conversion_rate":        _latest("manychat_conversion_rate", source="manychat"),
-        "total_tags":             _latest("manychat_total_tags",      source="manychat"),
         "total_flows":            _latest("manychat_total_flows",     source="manychat"),
-        "total_growth_tools":     _latest("manychat_growth_tools",    source="manychat"),
+        # Instagram
+        "ig_followers":           _latest("followers",                source="instagram"),
+        "ig_media_count":         _latest("media_count",              source="instagram"),
+        "ig_recent_reach":        _sum("total_reach",                 source="instagram"),
+        "ig_recent_impressions":  _sum("total_impressions",           source="instagram"),
+        "ig_total_likes":         _latest("total_likes",              source="instagram"),
+        "ig_total_comments":      _latest("total_comments",           source="instagram"),
+        "ig_total_interactions":  _latest("total_interactions",       source="instagram"),
     }
 
     return {
@@ -447,6 +499,7 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
         "automations":  automations,
         "interactions": interactions,
         "videos":       videos,
+        "ig_media":     ig_media,
         "storage":      storage
     }
 
@@ -454,7 +507,7 @@ async def get_dashboard(request: Request, user_id: Optional[str] = None):
 @router.get("/status")
 def get_status(request: Request):
     user_id = _get_user_id(request)
-    status  = {"youtube": False, "manychat": False}
+    status  = {"youtube": False, "manychat": False, "instagram": False}
     
     if not DB_PATH.exists() and os.environ.get("VERCEL") == "1":
         return status
@@ -462,11 +515,12 @@ def get_status(request: Request):
     try:
         with get_db() as conn:
             row = conn.execute(
-                "SELECT yt_refresh_token, manychat_key FROM users WHERE id = ?", (user_id,)
+                "SELECT yt_refresh_token, manychat_key, ig_access_token FROM users WHERE id = ?", (user_id,)
             ).fetchone()
             if row:
-                status["youtube"]  = bool(row["yt_refresh_token"])
-                status["manychat"] = bool(row["manychat_key"])
+                status["youtube"]   = bool(row["yt_refresh_token"])
+                status["manychat"]  = bool(row["manychat_key"])
+                status["instagram"] = bool(row["ig_access_token"])
     except Exception as e:
         print(f"[STATUS ERROR] {e}")
     return status

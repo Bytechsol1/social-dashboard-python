@@ -20,17 +20,19 @@ REDIRECT_URI         = f"{APP_URL}/api/auth/youtube/callback"
 YT_SCOPES = [
     "https://www.googleapis.com/auth/yt-analytics.readonly",
     "https://www.googleapis.com/auth/youtube.readonly",
-    "https://www.googleapis.com/auth/yt-analytics-monetary.readonly",
 ]
+
+# Top-level imports for consistency and to avoid scoping issues with exceptions
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+from api.encryption import decrypt, encrypt
+from api.services.manychat_service import ManyChatService, ManyChatAuthError
+from api.services.instagram_service import InstagramService
 
 
 async def perform_sync(user_id: str) -> dict:
-    # Aggressive lazy-loading to minimize Vercel cold starts
-    from google.oauth2.credentials import Credentials
-    from google.auth.transport.requests import Request
-    from googleapiclient.discovery import build
-    from api.encryption import decrypt
-    from api.services.manychat_service import ManyChatService
+    # Aggressive lazy-loading was causing scoping issues with exception names
 
     print(f"[SYNC] Starting sync for user: {user_id}")
     with get_db() as conn:
@@ -50,7 +52,7 @@ async def perform_sync(user_id: str) -> dict:
         return {"youtube": msg, "manychat": msg}
 
     user = dict(row)
-    results = {"youtube": "skipped", "manychat": "skipped"}
+    results = {"youtube": "skipped", "manychat": "skipped", "instagram": "skipped"}
 
     # ── 1. YouTube Sync ──────────────────────────────────────────────────────
     if user.get("yt_refresh_token"):
@@ -338,6 +340,103 @@ async def perform_sync(user_id: str) -> dict:
         print("[SYNC] ManyChat Sync Skipped: No API key found.")
         results["manychat"] = "skipped: no api key"
 
+    # ── 3. Instagram Sync ───────────────────────────────────────────────────
+    ig_token = None
+    try:
+        if user.get("ig_access_token"):
+            ig_token = decrypt(user["ig_access_token"])
+    except Exception as e:
+        print(f"[SYNC] Instagram token decryption failed: {e}")
+        ig_token = None
+
+    if not ig_token and os.environ.get("INSTAGRAM_ACCESS_TOKEN"):
+        ig_token = os.environ["INSTAGRAM_ACCESS_TOKEN"]
+
+    if ig_token:
+        print("[SYNC] Initialising Instagram Sync...")
+        try:
+            ig_service = InstagramService(ig_token)
+            
+            # Use stored user ID or fetch it
+            user_dict = dict(user)
+            ig_user_id = user_dict.get("ig_user_id")
+            if not ig_user_id:
+                ig_user_id = await ig_service.get_user_id()
+                if ig_user_id:
+                    with get_db() as conn:
+                        conn.execute("UPDATE users SET ig_user_id = ? WHERE id = ?", (ig_user_id, user_id))
+            
+            if ig_user_id:
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                print(f"[SYNC] Instagram sync using ID: {ig_user_id}")
+                
+                # 3a. Profile Info
+                profile = await ig_service.get_profile_info(ig_user_id)
+                if "followers_count" in profile:
+                    _upsert_metric(user_id, today, "instagram", "followers", profile["followers_count"])
+                    _upsert_metric(user_id, today, "instagram", "media_count", profile.get("media_count", 0))
+
+                # 3b. User-level Insights (Reach/Impressions)
+                insights = await ig_service.get_user_insights(ig_user_id)
+                for insight in insights:
+                    metric_name = insight["name"] # impressions, reach
+                    for val_obj in insight.get("values", []):
+                        v_date = val_obj["end_time"][:10]
+                        _upsert_metric(user_id, v_date, "instagram", f"total_{metric_name}", val_obj["value"])
+
+                # 3c. Audience Demographics
+                try:
+                    audience = await ig_service.get_audience_insights(ig_user_id)
+                    if audience:
+                        with get_db() as conn:
+                            conn.execute(
+                                "UPDATE users SET ig_audience_json = ? WHERE id = ?",
+                                (json.dumps(audience), user_id)
+                            )
+                        print("[SYNC] Stored IG audience demographics")
+                except Exception as aud_err:
+                    print(f"[SYNC] Audience Demographics skipped: {aud_err}")
+
+                # 3d. Media Sync & Aggregate Metrics
+                media_list = await ig_service.get_media_list(ig_user_id, limit=50)
+                total_likes = 0
+                total_comments = 0
+                total_interactions = 0
+                
+                for media in media_list:
+                    # Media insights are now pre-flattened in media dict
+                    _upsert_ig_media(user_id, media)
+                    
+                    # Accumulate for overview
+                    lks = media.get("like_count", 0)
+                    cms = media.get("comments_count", 0)
+                    svs = media.get("saved", 0)
+                    
+                    total_likes += lks
+                    total_comments += cms
+                    total_interactions += (lks + cms + svs)
+
+                # Store aggregated metrics for trends
+                _upsert_metric(user_id, today, "instagram", "total_likes", total_likes)
+                _upsert_metric(user_id, today, "instagram", "total_comments", total_comments)
+                _upsert_metric(user_id, today, "instagram", "total_interactions", total_interactions)
+                
+                _log(user_id, "COMPLETED", f"Instagram sync: {len(media_list)} media items synced.")
+                print("[SYNC] Instagram Sync Successful.")
+                results["instagram"] = "success"
+            else:
+                print("[SYNC] Instagram Sync Failed: Could not resolve ig_user_id")
+                results["instagram"] = "failed: could not resolve user_id"
+
+        except Exception as error:
+            err_msg = str(error)
+            print(f"[SYNC] Instagram Sync Error: {err_msg}")
+            _log(user_id, "FAILED", f"Instagram Failure: {err_msg}")
+            results["instagram"] = f"failed: {err_msg}"
+    else:
+        print("[SYNC] Instagram Sync Skipped: No token found.")
+        results["instagram"] = "skipped: no token"
+
     _log(user_id, "FINAL_STATUS", json.dumps(results))
     print(f"[SYNC] Complete for {user_id}. Results: {results}")
     return results
@@ -554,6 +653,27 @@ def _upsert_video(user_id: str, video: dict):
                 video["id"], user_id, video["title"], video["published_at"],
                 video["view_count"], video["like_count"],
                 video["comment_count"], video["thumbnail_url"]
+            )
+        )
+
+
+def _upsert_ig_media(user_id: str, media: dict):
+    # Mapping insights back to standard names if needed
+    views = media.get("video_views") or media.get("impressions", 0)
+    
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO instagram_media "
+            "(id, user_id, caption, media_type, media_url, permalink, timestamp, like_count, comments_count, view_count) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET "
+            "caption=excluded.caption, media_type=excluded.media_type, media_url=excluded.media_url, "
+            "permalink=excluded.permalink, like_count=excluded.like_count, "
+            "comments_count=excluded.comments_count, view_count=excluded.view_count, "
+            "updated_at=CURRENT_TIMESTAMP",
+            (
+                media["id"], user_id, media.get("caption"), media["media_type"],
+                media.get("media_url"), media["permalink"], media["timestamp"],
+                media.get("like_count", 0), media.get("comments_count", 0), views
             )
         )
 
