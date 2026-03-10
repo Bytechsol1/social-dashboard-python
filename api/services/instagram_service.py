@@ -88,7 +88,7 @@ class InstagramService:
                 res = await client.get(
                     f"{self.BASE_URL}/{ig_user_id}/insights",
                     params={
-                        "metric": "audience_city,audience_country,audience_gender_age",
+                        "metric": "reached_audience_demographics,follower_demographics",
                         "period": "lifetime",
                         "access_token": self.access_token
                     }
