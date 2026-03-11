@@ -19,14 +19,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# Avoid heavy top-level imports to prevent Vercel Cold Start timeouts
-# Routers and DB will be imported locally or later in the file
-
 app = FastAPI(title="Social Intelligence Dashboard API", version="2.0.0")
 
 # Allow Vite dev server (port 3000) to hit the API
-# Allow both local dev and production domains
-# Using '*' for origins on Vercel is often necessary initially to debug connectivity
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if os.environ.get("VERCEL") else [
@@ -38,11 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.get("/api/health")
-def health_check():
-    """Diagnostic route to verify server is up without DB access."""
-    return {"status": "healthy", "service": "api"}
 
 # Global Exception Handler to capture 500 errors on Vercel
 @app.exception_handler(Exception)
@@ -81,24 +71,6 @@ try:
     app.include_router(api_router, prefix="/api")
     app.include_router(debug_router, prefix="/api/debug")
 
-    # ── Static File Serving (For Docker/Standalone) ──────────────────────────
-    from fastapi.staticfiles import StaticFiles
-    from fastapi.responses import FileResponse
-    
-    dist_path = Path("dist")
-    if dist_path.exists():
-        app.mount("/assets", StaticFiles(directory=dist_path / "assets"), name="assets")
-        
-        @app.get("/{full_path:path}")
-        async def serve_spa(full_path: str):
-            # If the path starts with api, it should have been caught by routers above.
-            # Otherwise, serve index.html for React routing.
-            if full_path.startswith("api"):
-                return JSONResponse(status_code=404, content={"detail": "Not Found"})
-            return FileResponse(dist_path / "index.html")
-    else:
-        print("[BOOT] 'dist' folder not found. Frontend will not be served by Python.")
-
 except Exception as e:
     import traceback
     BOOT_ERROR = traceback.format_exc()
@@ -127,15 +99,11 @@ def health_check():
         "status": status,
         "service": "api",
         "routers_loaded": api_router is not None,
-        "storage": get_storage_engine(),
+        "storage": get_storage_engine() if not BOOT_ERROR else "unknown",
         "error": BOOT_ERROR
     }
 
 if __name__ == "__main__":
     import uvicorn
-    import sys
-    from pathlib import Path
-
-    # Add parent dir to sys.path so 'api' can be found when running directly
     sys.path.insert(0, str(Path(__file__).parent.parent))
     uvicorn.run("api.index:app", host="0.0.0.0", port=8000, reload=True)

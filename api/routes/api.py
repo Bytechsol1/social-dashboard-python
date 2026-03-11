@@ -102,8 +102,6 @@ async def youtube_callback(request: Request, data: OAuthCode):
         
         refresh_token = flow.credentials.refresh_token
         if not refresh_token:
-            # If user already authorized, Google might not send refresh_token unless prompt=consent
-            # We'll try to find existing or tell user to re-link
             return JSONResponse(status_code=400, content={"error": "No refresh token received. Try re-linking with 'prompt=consent'."})
 
         encrypted_token = encrypt(refresh_token)
