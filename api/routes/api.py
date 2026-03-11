@@ -526,7 +526,20 @@ def get_status(request: Request):
 def debug_user_check(request: Request):
     user_id = _get_user_id(request)
     engine = get_storage_engine()
+    db_url = os.environ.get("DATABASE_URL", "")
+    import socket
+    import urllib.parse
     
+    host = ""
+    res_info = []
+    if db_url:
+        try:
+            parsed = urllib.parse.urlparse(db_url.replace("postgres://", "postgresql://"))
+            host = parsed.hostname
+            res_info = socket.getaddrinfo(host, parsed.port or 5432)
+        except Exception as dns_e:
+            res_info = [f"DNS Error: {str(dns_e)}"]
+
     try:
         with get_db() as conn:
             # Check for exact match
@@ -541,7 +554,16 @@ def debug_user_check(request: Request):
             "found_in_db": bool(row),
             "all_user_ids_in_db": all_users,
             "id_match_check": user_id in all_users if all_users else False,
-            "is_vercel": os.environ.get("VERCEL") == "1"
+            "is_vercel": os.environ.get("VERCEL") == "1",
+            "db_host": host,
+            "dns_resolution": [str(r[4]) for r in res_info if isinstance(r, tuple)] if res_info else res_info
         }
     except Exception as e:
-        return {"error": str(e), "storage_engine": engine}
+        import traceback
+        return {
+            "error": str(e), 
+            "traceback": traceback.format_exc(),
+            "storage_engine": engine,
+            "db_host": host,
+            "dns_resolution": [str(r[4]) for r in res_info if isinstance(r, tuple)] if res_info else res_info
+        }
