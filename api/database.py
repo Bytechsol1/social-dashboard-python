@@ -105,90 +105,64 @@ def get_connection():
             
             # Force IPv4 resolution to prevent Errno 99 on Vercel
             import socket
+            target_host = result.hostname
             try:
-                print(f"[DB] Resolving IPv4 for {result.hostname}...")
                 ipv4_addresses = socket.getaddrinfo(result.hostname, result.port or 5432, family=socket.AF_INET)
                 if ipv4_addresses:
                     target_host = ipv4_addresses[0][4][0]
-                    print(f"[DB] Using IPv4 Address: {target_host}")
-                else:
-                    target_host = result.hostname
-            except Exception as dns_e:
-                print(f"[DB WARNING] IPv4 resolution failed: {dns_e}. Using original hostname.")
-                target_host = result.hostname
+            except Exception:
+                pass # Fallback to original hostname if IPv4 resolution fails
 
-            print(f"[DB] Attempting Postgres connection to {target_host}:{result.port or 5432}...")
-            
             # Helper to create connection with optional port override
             def _connect(port):
-                # We need to resolve host again if port changes, but target_host is just the IP now
-                # Most poolers (6543) share the same IP
                 return pg8000.connect(
                     user=result.username,
                     password=result.password,
                     host=target_host,
                     port=port,
                     database=result.path.lstrip('/'),
-                    timeout=20, # Increased timeout for Vercel cold starts
-                    ssl_context=True if "supabase" in db_url or "neon" in db_url else None
+                    timeout=20,
+                    ssl_context=True if db_url and ("supabase" in db_url or "neon" in db_url) else None
                 )
 
             try:
                 conn = _connect(result.port or 5432)
             except Exception as e:
                 # If direct port fails and it's Supabase, try the connection pooler port (6543)
-                if "supabase.co" in result.hostname and (not result.port or result.port == 5432):
-                    print(f"[DB] Port 5432 failed ({e}). Retrying with Supabase Pooler (Port 6543)...")
+                if result.hostname and "supabase.co" in result.hostname and (not result.port or result.port == 5432):
                     conn = _connect(6543)
                 else:
                     raise e
 
-            print("[DB] Postgres connection successful.")
             return PostgresWrapper(conn)
         except Exception as e:
-            print(f"[DB ERROR] Postgres connection failed: {e}")
             import traceback
-            traceback_print = traceback.format_exc()
-            print(traceback_print)
-            # If Postgres fails, we DON'T want to silently fallback to SQLite on Vercel
+            print(f"[DB ERROR] Postgres connection failed: {e}")
             if is_vercel:
-                raise Exception(f"Postgres connection failed: {str(e)}\n{traceback_print}")
+                raise Exception(f"Postgres connection failed: {str(e)}\n{traceback.format_exc()}")
 
     try:
-        # On Vercel, we MUST NOT attempt to connect if the file doesn't exist,
-        # otherwise SQLite will try to create it and crash with "Read-only file system".
+        # SQLite logic
         if is_vercel and not DB_PATH.exists():
-             print(f"[DB INFO] {DB_PATH} not found. Forcing fallback.")
              raise sqlite3.OperationalError("Database file missing on read-only FS")
 
         conn = sqlite3.connect(str(DB_PATH))
         conn.row_factory = sqlite3.Row
-        
-        # WAL mode is not supported on Vercel's read-only filesystem
         if not is_vercel:
-            try:
-                conn.execute("PRAGMA journal_mode=WAL")
-            except Exception:
-                pass
-        
+            try: conn.execute("PRAGMA journal_mode=WAL")
+            except Exception: pass
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
     except sqlite3.Error as e:
-        print(f"[DB ERROR] Could not connect to {DB_PATH}: {e}")
         if is_vercel:
-            print("[DB INFO] Falling back to :memory: database (Stateless/Ephemeral)")
             conn = sqlite3.connect(":memory:")
             conn.row_factory = sqlite3.Row
-            
-            # CRITICAL: Since :memory: DBs are connection-isolated, we MUST
-            # initialize the schema for every new connection in this mode.
             _init_schema(conn)
             return conn
         raise
 
 @contextmanager
 def get_db():
-    """Context manager for SQLite connections with auto-commit/close."""
     conn = get_connection()
     try:
         yield conn
@@ -199,13 +173,8 @@ def get_db():
     finally:
         conn.close()
 
-
 def _init_schema(conn):
-    """Internal helper to shared schema logic without recursion."""
-    # Detect if we are using Postgres or SQLite
     is_postgres = hasattr(conn, "conn") and conn.__class__.__name__ == "PostgresWrapper"
-    
-    # SQLite uses AUTOINCREMENT, Postgres uses SERIAL
     id_type = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
     
     conn.executescript(f"""
@@ -217,6 +186,7 @@ def _init_schema(conn):
             youtube_channel_id TEXT,
             ig_access_token TEXT,
             ig_user_id TEXT,
+            ig_audience_json TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS metrics (
@@ -257,13 +227,6 @@ def _init_schema(conn):
             synced_at TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-        CREATE TABLE IF NOT EXISTS manychat_pings (
-            id {id_type},
-            user_id TEXT,
-            automation_id TEXT,
-            type TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
         CREATE TABLE IF NOT EXISTS youtube_videos (
             id TEXT PRIMARY KEY,
             user_id TEXT,
@@ -289,37 +252,23 @@ def _init_schema(conn):
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
-    # Run migrations on this conn as well
     _safe_migrate_conn(conn)
 
 def init_db():
-    """Create all tables if they don't exist (called on startup)."""
     with get_db() as conn:
         _init_schema(conn)
-        # Only run ad-hoc migrations on SQLite. 
-        # Postgres schema should be managed via schema.sql
-        if get_storage_engine() == "sqlite":
-            _safe_migrate_conn(conn)
 
-def _safe_migrate():
-    if get_storage_engine() == "sqlite":
-        with get_db() as conn:
-            _safe_migrate_conn(conn)
-
-def _safe_migrate_conn(conn: sqlite3.Connection):
-    """Add new columns to existing tables without dropping data."""
+def _safe_migrate_conn(conn):
     migrations = [
-        ("users",                  "youtube_channel_id", "TEXT"),
-        ("sync_logs",              "flow_id",            "TEXT"),
-        ("manychat_automations",   "synced_at",          "TIMESTAMP"),
-        ("manychat_automations",   "clicks",             "INTEGER DEFAULT 0"),
-        ("users",                  "ig_access_token",     "TEXT"),
-        ("users",                  "ig_user_id",          "TEXT"),
-        ("users",                  "ig_audience_json",    "TEXT"),
+        ("users", "youtube_channel_id", "TEXT"),
+        ("sync_logs", "flow_id", "TEXT"),
+        ("manychat_automations", "synced_at", "TIMESTAMP"),
+        ("manychat_automations", "clicks", "INTEGER DEFAULT 0"),
+        ("users", "ig_access_token", "TEXT"),
+        ("users", "ig_user_id", "TEXT"),
+        ("users", "ig_audience_json", "TEXT"),
     ]
     for table, column, col_type in migrations:
         try:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
-            print(f"[DB MIGRATE] Added {table}.{column}")
-        except Exception:
-            pass  # Column already exists
+        except Exception: pass
