@@ -103,14 +103,30 @@ def get_connection():
             db_url = db_url.replace("postgres://", "postgresql://")
             result = urllib.parse.urlparse(db_url)
             
-            print(f"[DB] Attempting Postgres connection to {result.hostname}:{result.port or 5432}...")
+            # Force IPv4 resolution to prevent Errno 99 on Vercel
+            import socket
+            try:
+                print(f"[DB] Resolving IPv4 for {result.hostname}...")
+                ipv4_addresses = socket.getaddrinfo(result.hostname, result.port or 5432, family=socket.AF_INET)
+                if ipv4_addresses:
+                    target_host = ipv4_addresses[0][4][0]
+                    print(f"[DB] Using IPv4 Address: {target_host}")
+                else:
+                    target_host = result.hostname
+            except Exception as dns_e:
+                print(f"[DB WARNING] IPv4 resolution failed: {dns_e}. Using original hostname.")
+                target_host = result.hostname
+
+            print(f"[DB] Attempting Postgres connection to {target_host}:{result.port or 5432}...")
             
             # Helper to create connection with optional port override
             def _connect(port):
+                # We need to resolve host again if port changes, but target_host is just the IP now
+                # Most poolers (6543) share the same IP
                 return pg8000.connect(
                     user=result.username,
                     password=result.password,
-                    host=result.hostname,
+                    host=target_host,
                     port=port,
                     database=result.path.lstrip('/'),
                     timeout=20, # Increased timeout for Vercel cold starts
