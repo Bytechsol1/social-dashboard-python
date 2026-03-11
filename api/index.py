@@ -17,7 +17,8 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Social Intelligence Dashboard API", version="2.0.0")
 
@@ -70,6 +71,20 @@ try:
     # Include routers
     app.include_router(api_router, prefix="/api")
     app.include_router(debug_router, prefix="/api/debug")
+
+    # ── Static File Serving (For Docker/Standalone/Vercel) ──────────────────
+    dist_path = Path("dist")
+    if dist_path.exists():
+        app.mount("/assets", StaticFiles(directory=dist_path / "assets"), name="assets")
+        
+        @app.get("/{full_path:path}")
+        async def serve_spa(full_path: str):
+            # If it's not an API call, serve the index.html
+            if full_path.startswith("api"):
+                return JSONResponse(status_code=404, content={"detail": "Not Found"})
+            return FileResponse(dist_path / "index.html")
+    else:
+        print("[BOOT] 'dist' folder not found. Frontend will not be served by Python.")
 
 except Exception as e:
     import traceback
