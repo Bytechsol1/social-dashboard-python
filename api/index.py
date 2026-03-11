@@ -72,6 +72,24 @@ try:
     app.include_router(api_router, prefix="/api")
     app.include_router(debug_router, prefix="/api/debug")
 
+    # ── Health Check (must be registered BEFORE SPA catch-all) ─────────────
+    @app.get("/api/health")
+    def health_check():
+        """Diagnostic route to verify server is up and DB is connected."""
+        from api.database import get_storage_engine
+        
+        status = "healthy"
+        if BOOT_ERROR:
+            status = "boot_failure"
+        
+        return {
+            "status": status,
+            "service": "api",
+            "routers_loaded": api_router is not None,
+            "storage": get_storage_engine() if not BOOT_ERROR else "unknown",
+            "error": BOOT_ERROR
+        }
+
     # ── Static File Serving (For Docker/Standalone/Vercel) ──────────────────
     dist_path = Path("dist")
     if dist_path.exists():
@@ -101,24 +119,8 @@ def on_startup():
     except Exception as e:
         print(f"[BOOT ERROR] Database initialization failed: {e}")
 
-@app.get("/api/health")
-def health_check():
-    """Diagnostic route to verify server is up and DB is connected."""
-    from api.database import get_storage_engine
-    
-    status = "healthy"
-    if BOOT_ERROR:
-        status = "boot_failure"
-    
-    return {
-        "status": status,
-        "service": "api",
-        "routers_loaded": api_router is not None,
-        "storage": get_storage_engine() if not BOOT_ERROR else "unknown",
-        "error": BOOT_ERROR
-    }
-
 if __name__ == "__main__":
     import uvicorn
     sys.path.insert(0, str(Path(__file__).parent.parent))
     uvicorn.run("api.index:app", host="0.0.0.0", port=8000, reload=True)
+

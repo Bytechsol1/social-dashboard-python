@@ -84,7 +84,8 @@ async def get_youtube_auth_url(request: Request):
 
 @router.get("/auth/youtube/callback")
 async def youtube_callback(request: Request, code: str):
-    from google_auth_oauthlib.flow import Flow
+    """Handle Google OAuth callback using direct HTTP token exchange (no PKCE needed)."""
+    import httpx
     user_id = _get_user_id(request)
     print(f"[AUTH] Callback received for user {user_id}")
     
@@ -94,23 +95,32 @@ async def youtube_callback(request: Request, code: str):
     app_url = app_url.rstrip("/")
     redirect_uri = f"{app_url}/api/auth/youtube/callback"
 
-    client_config = {
-        "web": {
-            "client_id": os.environ.get("GOOGLE_CLIENT_ID"),
-            "client_secret": os.environ.get("GOOGLE_CLIENT_SECRET"),
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token"
-        }
-    }
+    client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
 
     try:
-        flow = Flow.from_client_config(client_config, scopes=[], redirect_uri=redirect_uri)
-        flow.fetch_token(code=code)
+        # Direct HTTP token exchange — bypasses PKCE requirement
+        # that breaks on Vercel serverless (code_verifier is lost between invocations)
+        async with httpx.AsyncClient() as client:
+            token_resp = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+            )
         
-        refresh_token = flow.credentials.refresh_token
+        token_data = token_resp.json()
+        print(f"[AUTH] Token response keys: {list(token_data.keys())}")
+        
+        if "error" in token_data:
+            raise Exception(f"({token_data['error']}) {token_data.get('error_description', 'Unknown error')}")
+        
+        refresh_token = token_data.get("refresh_token")
         if not refresh_token:
-            # Often happens if user already linked and we didn't force consent
-            # We might already have it, but for a "Connect" flow we want it.
             print("[AUTH WARNING] No refresh token received")
 
         encrypted_token = encrypt(refresh_token) if refresh_token else None
@@ -128,13 +138,13 @@ async def youtube_callback(request: Request, code: str):
         return HTMLResponse(content="""
             <html>
                 <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0B0E14;color:white;">
-                    <h1 style="color:#FF0000;">Connection Successful!</h1>
+                    <h1 style="color:#FF0000;">✅ YouTube Connected!</h1>
                     <p>This window will close automatically.</p>
                     <script>
                         if (window.opener) {
                             window.opener.postMessage({type: 'OAUTH_SUCCESS'}, '*');
                         }
-                        setTimeout(() => window.close(), 1000);
+                        setTimeout(() => window.close(), 1500);
                     </script>
                 </body>
             </html>
