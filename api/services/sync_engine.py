@@ -316,4 +316,17 @@ def _upsert_ig_media_conn(conn, user_id: str, m: dict):
 
 def _log(user_id: str, status: str, message: str, flow_id: str | None = None):
     with get_db() as conn:
-        conn.execute("INSERT INTO sync_logs (user_id, status, message, flow_id) VALUES (?, ?, ?, ?)", (user_id, status, message, flow_id))
+        try:
+            conn.execute("INSERT INTO sync_logs (user_id, status, message, flow_id) VALUES (?, ?, ?, ?)", (user_id, status, message, flow_id))
+        except Exception as e:
+            error_str = str(e)
+            if "duplicate key" in error_str or "23505" in error_str:
+                # Postgres SERIAL sequence is out of sync — reset it and retry
+                try:
+                    conn.execute("SELECT setval('sync_logs_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM sync_logs))")
+                    conn.execute("INSERT INTO sync_logs (user_id, status, message, flow_id) VALUES (?, ?, ?, ?)", (user_id, status, message, flow_id))
+                except Exception:
+                    pass  # Non-critical: don't crash sync over a log entry
+            else:
+                print(f"[SYNC LOG ERROR] {e}")
+
