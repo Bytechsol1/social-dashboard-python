@@ -103,25 +103,40 @@ def get_connection():
             db_url = db_url.replace("postgres://", "postgresql://")
             result = urllib.parse.urlparse(db_url)
             
-            print(f"[DB] Attempting Postgres connection to {result.hostname}...")
-            conn = pg8000.connect(
-                user=result.username,
-                password=result.password,
-                host=result.hostname,
-                port=result.port or 5432,
-                database=result.path.lstrip('/'),
-                ssl_context=True if "supabase" in db_url or "neon" in db_url else None
-            )
+            print(f"[DB] Attempting Postgres connection to {result.hostname}:{result.port or 5432}...")
+            
+            # Helper to create connection with optional port override
+            def _connect(port):
+                return pg8000.connect(
+                    user=result.username,
+                    password=result.password,
+                    host=result.hostname,
+                    port=port,
+                    database=result.path.lstrip('/'),
+                    timeout=20, # Increased timeout for Vercel cold starts
+                    ssl_context=True if "supabase" in db_url or "neon" in db_url else None
+                )
+
+            try:
+                conn = _connect(result.port or 5432)
+            except Exception as e:
+                # If direct port fails and it's Supabase, try the connection pooler port (6543)
+                if "supabase.co" in result.hostname and (not result.port or result.port == 5432):
+                    print(f"[DB] Port 5432 failed ({e}). Retrying with Supabase Pooler (Port 6543)...")
+                    conn = _connect(6543)
+                else:
+                    raise e
+
             print("[DB] Postgres connection successful.")
             return PostgresWrapper(conn)
         except Exception as e:
             print(f"[DB ERROR] Postgres connection failed: {e}")
             import traceback
-            traceback.print_exc()
+            traceback_print = traceback.format_exc()
+            print(traceback_print)
             # If Postgres fails, we DON'T want to silently fallback to SQLite on Vercel
-            # if the user intended to use Postgres.
             if is_vercel:
-                raise e
+                raise Exception(f"Postgres connection failed: {str(e)}\n{traceback_print}")
 
     try:
         # On Vercel, we MUST NOT attempt to connect if the file doesn't exist,
