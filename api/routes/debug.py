@@ -5,7 +5,6 @@ import urllib.parse
 import traceback
 from fastapi import APIRouter, HTTPException, Request
 from api.database import get_db, get_storage_engine
-from api.services.sync_engine import get_youtube_debug_info, get_manychat_debug_info
 
 router = APIRouter()
 
@@ -61,12 +60,6 @@ def debug_user_check(request: Request):
             "dns_resolution": [str(r[4]) for r in res_info if isinstance(r, tuple)] if res_info else res_info
         }
 
-@router.get("/youtube/{user_id}")
-def debug_youtube(user_id: str, request: Request):
-    _require_debug()
-    return get_youtube_debug_info(user_id)
-
-@router.get("/manychat/{user_id}")
-def debug_manychat(user_id: str, request: Request):
-    _require_debug()
-    return get_manychat_debug_info(user_id)
+@router.get("/status")
+def debug_status():
+    return {"debug_mode": DEBUG_MODE, "engine": get_storage_engine()}
