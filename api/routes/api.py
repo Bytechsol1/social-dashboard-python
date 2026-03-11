@@ -530,9 +530,9 @@ def debug_user_check(request: Request):
     try:
         with get_db() as conn:
             # Check for exact match
-            row = conn.execute("SELECT id FROM public.users WHERE id = ?", (user_id,)).fetchone()
+            row = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
             # List all users for debugging
-            all_users = [r["id"] for r in conn.execute("SELECT id FROM public.users").fetchall()]
+            all_users = [r["id"] for r in conn.execute("SELECT id FROM users").fetchall()]
             
         return {
             "demo_user_id_env": user_id,

@@ -103,6 +103,7 @@ def get_connection():
             db_url = db_url.replace("postgres://", "postgresql://")
             result = urllib.parse.urlparse(db_url)
             
+            print(f"[DB] Attempting Postgres connection to {result.hostname}...")
             conn = pg8000.connect(
                 user=result.username,
                 password=result.password,
@@ -111,9 +112,16 @@ def get_connection():
                 database=result.path.lstrip('/'),
                 ssl_context=True if "supabase" in db_url or "neon" in db_url else None
             )
+            print("[DB] Postgres connection successful.")
             return PostgresWrapper(conn)
         except Exception as e:
-            print(f"[DB ERROR] Postgres failed: {e}. Falling back...")
+            print(f"[DB ERROR] Postgres connection failed: {e}")
+            import traceback
+            traceback.print_exc()
+            # If Postgres fails, we DON'T want to silently fallback to SQLite on Vercel
+            # if the user intended to use Postgres.
+            if is_vercel:
+                raise e
 
     try:
         # On Vercel, we MUST NOT attempt to connect if the file doesn't exist,
