@@ -340,11 +340,11 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row text-slate-700 dark:text-slate-300 font-sans">
       {/* Sidebar Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 h-16 lg:h-auto lg:w-20 lg:bottom-0 lg:left-0 lg:top-0 border-t lg:border-t-0 lg:border-r border-slate-900/5 dark:border-white/5 flex lg:flex-col items-center justify-around lg:justify-start lg:py-8 lg:gap-8 bg-white/80 dark:bg-[#0D1117]/80 backdrop-blur-xl z-[60]">
+      <nav className="fixed bottom-0 left-0 right-0 h-16 lg:h-screen lg:w-20 lg:bottom-0 lg:left-0 lg:top-0 border-t lg:border-t-0 lg:border-r border-slate-900/5 dark:border-white/5 flex lg:flex-col items-center justify-around lg:justify-start lg:py-4 lg:gap-4 bg-white/80 dark:bg-[#0D1117]/80 backdrop-blur-xl z-[60] overflow-y-auto scrollbar-hide">
         <div className="hidden lg:flex w-12 h-12 bg-gradient-to-br from-brand-yt to-brand-yt/60 rounded-2xl items-center justify-center shadow-lg shadow-brand-yt/20">
           <TrendingUp className="text-slate-900 dark:text-white w-6 h-6" />
         </div>
-        <div className="flex lg:flex-col items-center gap-2 lg:gap-5 w-full lg:w-auto px-4 lg:px-0">
+        <div className="flex lg:flex-col items-center gap-2 lg:gap-3 w-full lg:w-auto px-4 lg:px-0">
           <button
             onClick={() => { setShowSettings(false); setActivePlatform('overview'); }}
             className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'overview' ? "bg-slate-900/10 dark:bg-white/10 text-emerald-400 shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
@@ -415,7 +415,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="mt-auto hidden lg:flex flex-col gap-4">
+        <div className="mt-auto hidden lg:flex flex-col gap-2 pb-4">
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-3 rounded-xl bg-slate-900/5 dark:bg-white/5 text-slate-500 hover:text-slate-900 dark:text-white transition-all border border-transparent hover:border-slate-900/10 dark:hover:border-white/10"
