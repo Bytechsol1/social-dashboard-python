@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 
-from api.database import get_db, DB_PATH
+from api.database import get_db, DB_PATH, get_storage_engine
 
 router = APIRouter()
 
@@ -509,9 +509,6 @@ def get_status(request: Request):
     user_id = _get_user_id(request)
     status  = {"youtube": False, "manychat": False, "instagram": False}
     
-    if not DB_PATH.exists() and os.environ.get("VERCEL") == "1":
-        return status
-
     try:
         with get_db() as conn:
             row = conn.execute(
@@ -524,3 +521,27 @@ def get_status(request: Request):
     except Exception as e:
         print(f"[STATUS ERROR] {e}")
     return status
+
+@router.get("/debug/user-check")
+def debug_user_check(request: Request):
+    user_id = _get_user_id(request)
+    engine = get_storage_engine()
+    
+    try:
+        with get_db() as conn:
+            # Check for exact match
+            row = conn.execute("SELECT id FROM public.users WHERE id = ?", (user_id,)).fetchone()
+            # List all users for debugging
+            all_users = [r["id"] for r in conn.execute("SELECT id FROM public.users").fetchall()]
+            
+        return {
+            "demo_user_id_env": user_id,
+            "demo_user_id_len": len(user_id),
+            "storage_engine": engine,
+            "found_in_db": bool(row),
+            "all_user_ids_in_db": all_users,
+            "id_match_check": user_id in all_users if all_users else False,
+            "is_vercel": os.environ.get("VERCEL") == "1"
+        }
+    except Exception as e:
+        return {"error": str(e), "storage_engine": engine}
