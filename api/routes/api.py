@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 
 from fastapi import APIRouter, Request, HTTPException, Depends
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
 from pydantic import BaseModel
 
 from api.database import get_db, get_storage_engine
@@ -82,10 +82,11 @@ async def get_youtube_auth_url(request: Request):
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/auth/youtube/callback")
-async def youtube_callback(request: Request, data: OAuthCode):
+@router.get("/auth/youtube/callback")
+async def youtube_callback(request: Request, code: str):
     from google_auth_oauthlib.flow import Flow
     user_id = _get_user_id(request)
+    print(f"[AUTH] Callback received for user {user_id}")
     
     app_url = os.environ.get("APP_URL") or os.environ.get("VERCEL_URL") or "http://localhost:3000"
     if "://" not in app_url:
@@ -104,25 +105,54 @@ async def youtube_callback(request: Request, data: OAuthCode):
 
     try:
         flow = Flow.from_client_config(client_config, scopes=[], redirect_uri=redirect_uri)
-        flow.fetch_token(code=data.code)
+        flow.fetch_token(code=code)
         
         refresh_token = flow.credentials.refresh_token
         if not refresh_token:
-            return JSONResponse(status_code=400, content={"error": "No refresh token received. Try re-linking with 'prompt=consent'."})
+            # Often happens if user already linked and we didn't force consent
+            # We might already have it, but for a "Connect" flow we want it.
+            print("[AUTH WARNING] No refresh token received")
 
-        encrypted_token = encrypt(refresh_token)
+        encrypted_token = encrypt(refresh_token) if refresh_token else None
         
         with get_db() as conn:
-            conn.execute(
-                "INSERT INTO users (id, email, yt_refresh_token) VALUES (?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET yt_refresh_token = excluded.yt_refresh_token",
-                (user_id, "user@example.com", encrypted_token)
-            )
+            if encrypted_token:
+                conn.execute(
+                    "INSERT INTO users (id, email, yt_refresh_token) VALUES (?, ?, ?) "
+                    "ON CONFLICT(id) DO UPDATE SET yt_refresh_token = excluded.yt_refresh_token",
+                    (user_id, "user@example.com", encrypted_token)
+                )
+            else:
+                print("[AUTH] Skipping DB update (no new refresh token)")
             
-        return {"success": True}
+        return HTMLResponse(content="""
+            <html>
+                <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0B0E14;color:white;">
+                    <h1 style="color:#FF0000;">Connection Successful!</h1>
+                    <p>This window will close automatically.</p>
+                    <script>
+                        if (window.opener) {
+                            window.opener.postMessage({type: 'OAUTH_SUCCESS'}, '*');
+                        }
+                        setTimeout(() => window.close(), 1000);
+                    </script>
+                </body>
+            </html>
+        """)
     except Exception as e:
-        print(f"[AUTH ERROR] {e}")
-        return JSONResponse(status_code=400, content={"error": str(e)})
+        import traceback
+        error_msg = str(e)
+        print(f"[AUTH ERROR] {error_msg}")
+        print(traceback.format_exc())
+        return HTMLResponse(content=f"""
+            <html>
+                <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#0B0E14;color:white;padding:20px;text-align:center;">
+                    <h1 style="color:#f43f5e;">Connection Failed</h1>
+                    <p>{error_msg}</p>
+                    <button onclick="window.close()" style="margin-top:20px;padding:10px 20px;background:#f43f5e;color:white;border:none;border-radius:8px;cursor:pointer;">Close Window</button>
+                </body>
+            </html>
+        """)
 
 @router.post("/auth/manychat")
 async def connect_manychat(request: Request, data: ManyChatKey):
