@@ -80,6 +80,25 @@ try:
     # Include routers
     app.include_router(api_router, prefix="/api")
     app.include_router(debug_router, prefix="/api/debug")
+
+    # ── Static File Serving (For Docker/Standalone) ──────────────────────────
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+    
+    dist_path = Path("dist")
+    if dist_path.exists():
+        app.mount("/assets", StaticFiles(directory=dist_path / "assets"), name="assets")
+        
+        @app.get("/{full_path:path}")
+        async def serve_spa(full_path: str):
+            # If the path starts with api, it should have been caught by routers above.
+            # Otherwise, serve index.html for React routing.
+            if full_path.startswith("api"):
+                return JSONResponse(status_code=404, content={"detail": "Not Found"})
+            return FileResponse(dist_path / "index.html")
+    else:
+        print("[BOOT] 'dist' folder not found. Frontend will not be served by Python.")
+
 except Exception as e:
     import traceback
     BOOT_ERROR = traceback.format_exc()

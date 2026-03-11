@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  dashboard:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./social_intel.db:/app/social_intel.db
+      - ./.env:/app/.env
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-}
+      - VERCEL=0 # Signal we are in a container/persistent mode
+    restart: always

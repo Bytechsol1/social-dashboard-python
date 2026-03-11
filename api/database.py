@@ -43,7 +43,7 @@ class PostgresWrapper:
         # Translate SQLite ? to Postgres %s
         sql = sql.replace("?", "%s")
         cur = self.conn.cursor()
-        cur.execute(sql, params)
+        cur.execute(sql, params or ())
         return PostgresCursorWrapper(cur)
 
     def executescript(self, sql):
@@ -257,10 +257,15 @@ def init_db():
     """Create all tables if they don't exist (called on startup)."""
     with get_db() as conn:
         _init_schema(conn)
+        # Only run ad-hoc migrations on SQLite. 
+        # Postgres schema should be managed via schema.sql
+        if get_storage_engine() == "sqlite":
+            _safe_migrate_conn(conn)
 
 def _safe_migrate():
-    with get_db() as conn:
-        _safe_migrate_conn(conn)
+    if get_storage_engine() == "sqlite":
+        with get_db() as conn:
+            _safe_migrate_conn(conn)
 
 def _safe_migrate_conn(conn: sqlite3.Connection):
     """Add new columns to existing tables without dropping data."""
