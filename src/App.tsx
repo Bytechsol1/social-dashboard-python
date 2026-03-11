@@ -284,9 +284,21 @@ export default function App() {
   }, []);
 
   const connectYoutube = async () => {
-    const res = await fetch('/api/auth/youtube/url');
-    const { url } = await res.json();
-    window.open(url, 'youtube_auth', 'width=600,height=700');
+    try {
+      const res = await fetch('/api/auth/youtube/url', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) {
+        alert("Google Error: " + (json.detail || "Could not generate auth URL."));
+        return;
+      }
+      if (!json.url) {
+        alert("Google Error: Backend returned no URL.");
+        return;
+      }
+      window.open(json.url, 'youtube_auth', 'width=600,height=700');
+    } catch (e: any) {
+      alert("Connection Error: " + e.message);
+    }
   };
 
   const saveManychat = async () => {

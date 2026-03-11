@@ -31,50 +31,56 @@ def _get_user_id(request: Request) -> str:
 
 # --- Routes ---
 
-@router.get("/health")
-def health_check():
-    return {"status": "ok", "engine": get_storage_engine()}
-
 @router.post("/auth/youtube/url")
 async def get_youtube_auth_url(request: Request):
     from google_auth_oauthlib.flow import Flow
+    print("[AUTH] Generating YouTube connection URL...")
     
-    # Robust URL detection for Vercel
-    app_url = os.environ.get("APP_URL") or os.environ.get("VERCEL_URL") or "http://localhost:3000"
-    if "://" not in app_url:
-        app_url = f"https://{app_url}"
-    app_url = app_url.rstrip("/")
-    
-    redirect_uri = f"{app_url}/api/auth/youtube/callback"
-    
-    # Ensure client config is present
-    client_id = os.environ.get("GOOGLE_CLIENT_ID")
-    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
-    
-    if not client_id or not client_secret:
-        raise HTTPException(status_code=500, detail="Google OAuth credentials missing")
+    try:
+        # Robust URL detection for Vercel
+        app_url = os.environ.get("APP_URL") or os.environ.get("VERCEL_URL") or "http://localhost:3000"
+        if "://" not in app_url:
+            app_url = f"https://{app_url}"
+        app_url = app_url.rstrip("/")
+        
+        redirect_uri = f"{app_url}/api/auth/youtube/callback"
+        print(f"[AUTH] Using redirect_uri: {redirect_uri}")
+        
+        # Ensure client config is present
+        client_id = os.environ.get("GOOGLE_CLIENT_ID")
+        client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
+        
+        if not client_id or not client_secret:
+            print("[AUTH ERROR] Missing credentials in environment")
+            raise HTTPException(status_code=500, detail="Google OAuth credentials missing")
 
-    client_config = {
-        "web": {
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [redirect_uri]
+        client_config = {
+            "web": {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [redirect_uri]
+            }
         }
-    }
 
-    flow = Flow.from_client_config(
-        client_config,
-        scopes=[
-            "https://www.googleapis.com/auth/yt-analytics.readonly",
-            "https://www.googleapis.com/auth/youtube.readonly"
-        ],
-        redirect_uri=redirect_uri
-    )
-    
-    auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
-    return {"url": auth_url}
+        flow = Flow.from_client_config(
+            client_config,
+            scopes=[
+                "https://www.googleapis.com/auth/yt-analytics.readonly",
+                "https://www.googleapis.com/auth/youtube.readonly"
+            ],
+            redirect_uri=redirect_uri
+        )
+        
+        auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
+        print(f"[AUTH] Successfully generated URL: {auth_url[:50]}...")
+        return {"url": auth_url}
+    except Exception as e:
+        import traceback
+        print(f"[AUTH FATAL ERROR] {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/auth/youtube/callback")
 async def youtube_callback(request: Request, data: OAuthCode):
