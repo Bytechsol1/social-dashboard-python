@@ -64,17 +64,25 @@ async def get_youtube_auth_url(request: Request):
             }
         }
 
-        flow = Flow.from_client_config(
-            client_config,
-            scopes=[
-                "https://www.googleapis.com/auth/yt-analytics.readonly",
-                "https://www.googleapis.com/auth/youtube.readonly"
-            ],
-            redirect_uri=redirect_uri
-        )
+        from urllib.parse import urlencode
         
-        auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
-        print(f"[AUTH] Successfully generated URL: {auth_url[:50]}...")
+        scopes = [
+            "https://www.googleapis.com/auth/yt-analytics.readonly",
+            "https://www.googleapis.com/auth/youtube.readonly"
+        ]
+        
+        params = {
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+            "scope": " ".join(scopes),
+            "access_type": "offline",
+            "prompt": "consent",
+            "include_granted_scopes": "true"
+        }
+        
+        auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+        print(f"[AUTH] Successfully generated manual URL: {auth_url[:50]}...")
         return {"url": auth_url}
     except Exception as e:
         import traceback
