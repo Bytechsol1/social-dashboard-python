@@ -31,7 +31,7 @@ def _get_user_id(request: Request) -> str:
 
 # --- Routes ---
 
-@router.post("/auth/youtube/url")
+@router.get("/auth/youtube/url")
 async def get_youtube_auth_url(request: Request):
     from google_auth_oauthlib.flow import Flow
     print("[AUTH] Generating YouTube connection URL...")

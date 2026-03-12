@@ -285,7 +285,7 @@ export default function App() {
 
   const connectYoutube = async () => {
     try {
-      const res = await fetch('/api/auth/youtube/url', { method: 'POST' });
+      const res = await fetch('/api/auth/youtube/url');
       const json = await res.json();
       if (!res.ok) {
         alert("Google Error: " + (json.detail || "Could not generate auth URL."));
