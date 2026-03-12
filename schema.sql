@@ -95,3 +95,24 @@ CREATE TABLE IF NOT EXISTS instagram_media (
     view_count INTEGER DEFAULT 0,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 9. YouTube Ideas (AI)
+CREATE TABLE IF NOT EXISTS youtube_ideas (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT,
+    description TEXT,
+    suggested_month_year TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 10. YouTube Shorts Suggestions (AI)
+CREATE TABLE IF NOT EXISTS youtube_shorts_suggestions (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    video_id TEXT REFERENCES youtube_videos(id) ON DELETE CASCADE,
+    start_time TEXT,
+    stop_time TEXT,
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

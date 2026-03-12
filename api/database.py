@@ -129,7 +129,8 @@ def get_connection():
                 conn = _connect(result.port or 5432)
             except Exception as e:
                 # If direct port fails and it's Supabase, try the connection pooler port (6543)
-                if result.hostname and "supabase.co" in result.hostname and (not result.port or result.port == 5432):
+                hostname = result.hostname or ""
+                if "supabase.co" in hostname and (not result.port or result.port == 5432):
                     conn = _connect(6543)
                 else:
                     raise e
@@ -250,6 +251,23 @@ def _init_schema(conn):
             comments_count INTEGER DEFAULT 0,
             view_count INTEGER DEFAULT 0,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS youtube_ideas (
+            id {id_type},
+            user_id TEXT,
+            title TEXT,
+            description TEXT,
+            suggested_month_year TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS youtube_shorts_suggestions (
+            id {id_type},
+            user_id TEXT,
+            video_id TEXT,
+            start_time TEXT,
+            stop_time TEXT,
+            reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
     if is_postgres:

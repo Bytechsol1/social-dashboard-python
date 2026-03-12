@@ -165,6 +165,10 @@ export default function App() {
   const [trendsError, setTrendsError] = useState('');
   const [expandedIdea, setExpandedIdea] = useState<number | null>(null);
   const [copyMsg, setCopyMsg] = useState<number | null>(null);
+  const [ytIdeas, setYtIdeas] = useState<any[]>([]);
+  const [ytShortsSuggestions, setYtShortsSuggestions] = useState<Record<string, any[]>>({});
+  const [fetchingIdeas, setFetchingIdeas] = useState(false);
+  const [analyzingVideos, setAnalyzingVideos] = useState<Set<string>>(new Set());
 
   const automationsByMonth = React.useMemo(() => {
     if (!data?.automations) return [];
@@ -273,8 +277,40 @@ export default function App() {
     }
   };
 
+  const fetchYtIdeas = async () => {
+    setFetchingIdeas(true);
+    try {
+      const res = await fetch('/api/youtube/ideas');
+      const json = await res.json();
+      setYtIdeas(json.ideas || []);
+    } catch (err) {
+      console.error('[fetchYtIdeas]', err);
+    } finally {
+      setFetchingIdeas(false);
+    }
+  };
+
+  const fetchShorts = async (videoId: string, force = false) => {
+    try {
+      setAnalyzingVideos(prev => new Set(prev).add(videoId));
+      const res = await fetch(`/api/youtube/shorts-suggestions?video_id=${videoId}${force ? '&force=true' : ''}`);
+      const json = await res.json();
+      setYtShortsSuggestions(prev => ({ ...prev, [videoId]: json.suggestions || [] }));
+    } catch (err) {
+      console.error('[fetchShorts]', err);
+    } finally {
+      setAnalyzingVideos(prev => {
+        const next = new Set(prev);
+        next.delete(videoId);
+        return next;
+      });
+    }
+  };
+
+  // No longer auto-fetching shorts to prevent high API costs & give user control
   useEffect(() => {
     fetchData();
+    fetchYtIdeas();
 
     const handleOAuth = (e: MessageEvent) => {
       if (e.data?.type === 'OAUTH_SUCCESS') fetchData();
@@ -282,6 +318,18 @@ export default function App() {
     window.addEventListener('message', handleOAuth);
     return () => window.removeEventListener('message', handleOAuth);
   }, []);
+
+  // Auto-fetch shorts suggestions when videos data loads
+  useEffect(() => {
+    if (data?.videos && data.videos.length > 0) {
+      // Auto-fetch for top 4 videos
+      data.videos.slice(0, 4).forEach((vid: any) => {
+        if (!ytShortsSuggestions[vid.id]) {
+          fetchShorts(vid.id);
+        }
+      });
+    }
+  }, [data?.videos]);
 
   const connectYoutube = async () => {
     try {
@@ -964,130 +1012,241 @@ export default function App() {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 1.05 }}
-                        className="space-y-8"
+                        className="space-y-10"
                       >
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                          {/* AI Inspiration Panel */}
-                          <Card className="lg:col-span-2 bg-gradient-to-br from-[#FF0000]/5 to-transparent border-[#FF0000]/10 overflow-hidden relative">
-                            <div className="absolute top-0 right-0 p-8 opacity-5">
-                                <Youtube className="w-64 h-64 text-[#FF0000]" />
-                            </div>
-                            <div className="flex items-center justify-between mb-8 relative z-10">
-                              <div>
-                                <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Neural Shorts Extraction</h3>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">AI-powered engagement analysis</p>
-                              </div>
-                              <div className="px-4 py-1 bg-[#FF0000]/10 border border-[#FF0000]/20 rounded-full text-[10px] font-black text-[#FF0000] animate-pulse">ALGORITHMIC SCAN: 100%</div>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                              <div className="p-6 bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-white/5 space-y-4 hover:border-[#FF0000]/30 transition-all cursor-pointer shadow-sm">
-                                <div className="flex items-center gap-3">
-                                  <Zap className="w-5 h-5 text-[#FF0000]" />
-                                  <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Viral Hook Potential</h4>
-                                </div>
-                                <div className="flex items-end gap-2">
-                                  <span className="text-4xl font-black text-slate-900 dark:text-white">24</span>
-                                  <span className="text-xs font-bold text-emerald-500 mb-1">+85% Score</span>
-                                </div>
-                                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">We found 24 aggressive hooks with high retention probability in your last video. Ideal for 0-3s retention.</p>
-                              </div>
 
-                              <div className="p-6 bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-white/5 space-y-4 hover:border-[#FF0000]/30 transition-all cursor-pointer shadow-sm">
-                                <div className="flex items-center gap-3">
-                                  <Clock className="w-5 h-5 text-[#FF0000]" />
-                                  <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Segment Distribution</h4>
-                                </div>
-                                <div className="flex items-end gap-2">
-                                  <span className="text-4xl font-black text-slate-900 dark:text-white">58s</span>
-                                  <span className="text-xs font-bold text-slate-500 mb-1">Mean Length</span>
-                                </div>
-                                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">AI recommends 58-second segments. Audience drop-off increases significantly after the 60s mark for this content type.</p>
-                              </div>
+                        {/* ───────── SECTION 1: Trending Videos ───────── */}
+                        <div>
+                          <div className="flex items-center justify-between mb-6">
+                            <div>
+                              <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                                <span className="text-2xl">🔥</span> YouTube Trending Now
+                              </h3>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                                Topics trending in your niche — click to explore on YouTube
+                              </p>
                             </div>
+                            <button
+                              onClick={fetchYtIdeas}
+                              disabled={fetchingIdeas}
+                              className="px-4 py-2 bg-brand-yt text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                            >
+                              <RefreshCw className={cn("w-3 h-3", fetchingIdeas && "animate-spin")} />
+                              Refresh All
+                            </button>
+                          </div>
 
-                            <div className="mt-8 p-6 bg-white dark:bg-slate-900/30 rounded-3xl border border-slate-200 dark:border-white/10 relative z-10 shadow-inner">
-                              <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                                <Activity className="w-4 h-4 text-[#FF0000]" /> 
-                                Top Neural Hooks
-                              </h4>
-                              <div className="space-y-3">
-                                {[
-                                  { time: "0:12 - 1:10", label: "Controversial Statement Hook", score: 98, type: "Retention Max" },
-                                  { time: "4:45 - 5:30", label: "Visual Revelation Bridge", score: 92, type: "Viral Bridge" },
-                                  { time: "8:20 - 9:05", label: "Final CTA Matrix", score: 85, type: "Conversion" }
-                                ].map((seg, i) => (
-                                  <div key={i} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 group hover:bg-white/10 transition-all">
-                                    <div className="flex items-center gap-4">
-                                      <div className="px-3 py-1 bg-[#FF0000]/10 rounded-lg text-[10px] font-black text-[#FF0000] tabular-nums">{seg.time}</div>
-                                      <div className="flex flex-col">
-                                          <span className="text-xs font-black text-slate-900 dark:text-white underline decoration-[#FF0000]/30">{seg.label}</span>
-                                          <span className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{seg.type}</span>
-                                      </div>
-                                    </div>
-                                    <div className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">{seg.score}% VIRAL SCORE</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {ytIdeas.length > 0 ? ytIdeas.slice(0, 8).map((idea: any, i: number) => {
+                              let rich: any = null;
+                              try { rich = typeof idea.description === 'string' && idea.description.startsWith('{') ? JSON.parse(idea.description) : null; } catch {}
+                              const keyword = rich?.trending_keyword || idea.title;
+                              const url = rich?.trending_url || `https://www.youtube.com/results?search_query=${encodeURIComponent(idea.title)}+2026`;
+                              return (
+                                <a
+                                  key={i}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-4 bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-white/5 flex items-start gap-3 hover:border-brand-yt/40 hover:shadow-md transition-all group"
+                                >
+                                  <div className="p-2 bg-brand-yt/10 rounded-xl shrink-0">
+                                    <TrendingUp className="w-4 h-4 text-brand-yt" />
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          </Card>
-
-                          {/* Analyzed Videos List */}
-                          <Card className="bg-black border-white/5">
-                            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Analyzed Source Content</h3>
-                            <div className="space-y-4">
-                              {(data?.videos || []).slice(0, 4).map((vid: any) => (
-                                <div key={vid.id} className="flex items-center gap-4 p-3 bg-white/[0.02] rounded-2xl border border-white/5 group hover:border-[#FF0000]/30 transition-all cursor-pointer">
-                                  <div className="w-16 h-10 bg-slate-800 rounded-lg overflow-hidden shrink-0 relative">
-                                    {vid.thumbnail_url ? (
-                                      <img src={vid.thumbnail_url} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full bg-slate-800" />
-                                    )}
-                                    <div className="absolute inset-x-0 bottom-0 h-1 bg-[#FF0000]" style={{ width: '85%' }} />
+                                  <div className="min-w-0">
+                                    <p className="text-[11px] font-black text-slate-900 dark:text-white leading-tight group-hover:text-brand-yt transition-colors line-clamp-2">{keyword}</p>
+                                    <p className="text-[9px] text-brand-yt font-bold mt-1 uppercase tracking-widest">View on YouTube →</p>
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-black text-white truncate">{vid.title}</p>
-                                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{vid.view_count.toLocaleString()} VIEWS • 3 SHORTS DETECTED</p>
-                                  </div>
-                                </div>
-                              ))}
-                              {(!data?.videos || data.videos.length === 0) && (
-                                <div className="py-6 text-center">
-                                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Connect YouTube to see video analysis</p>
-                                </div>
-                              )}
-                            </div>
-                          </Card>
-
-                          {/* Performance Matrix (replaces infinite spinner) */}
-                          <Card>
-                            <h3 className="font-black text-slate-900 dark:text-white tracking-tight mb-6">Performance Matrix</h3>
-                            <div className="space-y-5">
-                              {[
-                                { label: 'Views (30d)', value: fmt(data?.summary?.recent_views), color: 'bg-brand-yt' },
-                                { label: 'Watch Time', value: formatWatchTime(data?.summary?.watch_time_minutes), color: 'bg-blue-400' },
-                                { label: 'Subscribers', value: fmt(data?.summary?.subscribers), color: 'bg-emerald-400' },
-                                { label: 'Total Videos', value: fmt(data?.summary?.total_videos), color: 'bg-purple-400' },
-                                { label: 'Recent Likes', value: fmt(data?.summary?.recent_likes), color: 'bg-amber-400' },
-                              ].map((row) => (
-                                <div key={row.label} className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <div className={cn('w-2 h-2 rounded-full', row.color)} />
-                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{row.label}</span>
-                                  </div>
-                                  <span className="text-sm font-black text-slate-900 dark:text-white">{row.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="mt-6 pt-4 border-t border-slate-900/5 dark:border-white/5">
-                              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Connect competitor channels to unlock competitive analysis</p>
-                              <button className="mt-3 w-full py-2 border border-dashed border-slate-300 dark:border-white/10 rounded-xl text-xs font-black text-slate-500 hover:border-brand-yt/30 hover:text-brand-yt transition-all">+ Add Channel</button>
-                            </div>
-                          </Card>
+                                </a>
+                              );
+                            }) : (
+                              [...Array(4)].map((_, i) => (
+                                <div key={i} className="p-4 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 animate-pulse h-16" />
+                              ))
+                            )}
+                          </div>
                         </div>
+
+                        {/* ───────── SECTION 2: Shorts Content Ideas ───────── */}
+                        <div>
+                          <div className="mb-6">
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                              <span className="text-2xl">💡</span> Shorts Content Ideas
+                            </h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                              AI-generated ideas with full hook, script & trend analysis — ready to film
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {ytIdeas.length > 0 ? ytIdeas.map((idea: any, i: number) => {
+                              let rich: any = null;
+                              try { rich = typeof idea.description === 'string' && idea.description.startsWith('{') ? JSON.parse(idea.description) : null; } catch {}
+                              const mainDesc = rich?.text || idea.description || '';
+                              const shortHook = rich?.short_hook || '';
+                              const shortScript = rich?.short_script || '';
+                              const keyword = rich?.trending_keyword || idea.title;
+                              const url = rich?.trending_url || `https://www.youtube.com/results?search_query=${encodeURIComponent(idea.title)}`;
+
+                              return (
+                                <Card key={i} className="space-y-4 hover:border-brand-yt/30 transition-all group border-slate-200 dark:border-white/5">
+                                  {/* Header */}
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-start gap-3">
+                                      <div className="p-2 bg-brand-yt/10 rounded-xl shrink-0">
+                                        <Zap className="w-4 h-4 text-brand-yt" />
+                                      </div>
+                                      <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide group-hover:text-brand-yt transition-colors leading-tight">{idea.title}</h4>
+                                    </div>
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest shrink-0 pt-1">{idea.suggested_month_year}</span>
+                                  </div>
+
+                                  {/* Video description */}
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">{mainDesc}</p>
+
+                                  {/* Why it will trend */}
+                                  <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl">
+                                    <p className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">📈 Why It Will Trend</p>
+                                    <p className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium">Matches rising search: <span className="font-black">"{keyword}"</span> — high engagement potential in {idea.suggested_month_year}.</p>
+                                  </div>
+
+                                  {/* Short Hook */}
+                                  {shortHook && (
+                                    <div className="p-3 bg-brand-yt/5 border border-brand-yt/15 rounded-xl">
+                                      <p className="text-[9px] font-black text-brand-yt uppercase tracking-widest mb-1">⚡ Shorts Opening Hook</p>
+                                      <p className="text-[11px] text-slate-700 dark:text-slate-300 italic leading-relaxed">{shortHook}</p>
+                                    </div>
+                                  )}
+
+                                  {/* Short Script */}
+                                  {shortScript && (
+                                    <div className="p-3 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl">
+                                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">🎬 Short Script Outline</p>
+                                      <pre className="text-[10px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed font-sans">{shortScript}</pre>
+                                    </div>
+                                  )}
+
+                                  {/* Trending Link */}
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-brand-yt text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all w-full justify-center"
+                                  >
+                                    <TrendingUp className="w-3.5 h-3.5" />
+                                    See Trending Videos for This Topic
+                                  </a>
+                                </Card>
+                              );
+                            }) : (
+                              <div className="col-span-2 py-16 text-center text-slate-500 font-bold uppercase tracking-widest text-xs">
+                                No ideas yet — click "Refresh All" above to generate with AI.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* ───────── SECTION 3: Your Videos Shorts Analysis ───────── */}
+                        <div>
+                          <div className="mb-6">
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                              <span className="text-2xl">✂️</span> Your Videos — Shorts Analysis
+                            </h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                              AI scans your existing videos to find the best 60-second segments for Shorts
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Left: video list */}
+                            <Card className="bg-slate-950 border-white/5">
+                              <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-5">📺 Your Channel Videos</h4>
+                              <div className="space-y-3">
+                                {(data?.videos || []).slice(0, 4).map((vid: any) => {
+                                  const isAnalyzing = analyzingVideos.has(vid.id);
+                                  const hasShorts = (ytShortsSuggestions[vid.id]?.length || 0) > 0;
+                                  
+                                  return (
+                                    <div
+                                      key={vid.id}
+                                      className={`flex items-center gap-4 p-3 bg-white/[0.03] rounded-2xl border border-white/5 transition-all ${isAnalyzing ? 'animate-pulse border-brand-yt/20' : ''}`}
+                                    >
+                                      <div className={`w-16 h-10 bg-slate-800 rounded-lg overflow-hidden shrink-0 ${isAnalyzing ? 'opacity-50' : ''}`}>
+                                        {vid.thumbnail_url ? (
+                                          <img src={vid.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                                            <Youtube className="w-5 h-5 text-slate-600" />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-[11px] font-black text-white truncate">{vid.title}</p>
+                                        <p className="text-[9px] font-bold text-slate-500 uppercase mt-1">
+                                          {vid.view_count?.toLocaleString()} VIEWS • {ytShortsSuggestions[vid.id]?.length || 0} SHORTS FOUND
+                                        </p>
+                                      </div>
+                                      
+                                      <button
+                                        onClick={() => fetchShorts(vid.id, hasShorts)}
+                                        disabled={isAnalyzing}
+                                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                                          isAnalyzing 
+                                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
+                                          : hasShorts 
+                                            ? 'bg-white/5 text-slate-400 hover:bg-brand-yt/10 hover:text-brand-yt'
+                                            : 'bg-brand-yt text-white hover:scale-105 active:scale-95 shadow-lg shadow-brand-yt/20'
+                                        }`}
+                                      >
+                                        {isAnalyzing ? 'Analyzing...' : hasShorts ? 'Re-Analyze' : 'Analyze'}
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                                {(!data?.videos || data.videos.length === 0) && (
+                                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest text-center py-8">Connect YouTube to analyze your videos</p>
+                                )}
+                              </div>
+                            </Card>
+
+                            {/* Right: shorts segments */}
+                            <Card className="border-slate-200 dark:border-white/5">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                  <Activity className="w-4 h-4 text-brand-yt" /> Best Segments to Cut as Shorts
+                                </h4>
+                              </div>
+                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-5">
+                                Based on: video title · description · engagement patterns
+                              </p>
+                              <div className="space-y-3">
+                                {Object.values(ytShortsSuggestions).flat().length > 0 ? (
+                                  Object.values(ytShortsSuggestions).flat().slice(0, 6).map((seg: any, i: number) => (
+                                    <div key={i} className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <div className="px-3 py-1 bg-brand-yt/10 rounded-lg text-[10px] font-black text-brand-yt tabular-nums">{seg.start_time} → {seg.stop_time}</div>
+                                        <div className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[9px] font-black text-emerald-400">SHORT READY ✓</div>
+                                      </div>
+                                      <p className="text-xs font-black text-slate-900 dark:text-white">{seg.reason}</p>
+                                      {seg.hook && <p className="text-[10px] text-slate-500 dark:text-slate-400 italic">Hook: "{seg.hook}"</p>}
+                                      <p className="text-[9px] font-bold text-slate-400 uppercase">📺 {seg.video_title || seg.video_id}</p>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="py-12 text-center">
+                                    <Activity className="w-8 h-8 text-brand-yt/20 mx-auto mb-3 animate-pulse" />
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Select a video on the left to analyze</p>
+                                    <p className="text-[9px] text-slate-400 mt-1">Or wait for auto-analysis to complete</p>
+                                  </div>
+                                )}
+                              </div>
+                            </Card>
+                          </div>
+                        </div>
+
                       </motion.div>
                     )}
+
                   </AnimatePresence>
                 </div>
               )}
