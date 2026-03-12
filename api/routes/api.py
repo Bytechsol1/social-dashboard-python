@@ -269,12 +269,28 @@ async def get_dashboard_data(request: Request):
         return sum(r["value"] for r in rows if r["metric_name"] == name and r["source"] == source and r["date"] >= cutoff)
 
     summary = {
+        # YouTube Specific (Specific Keys)
         "youtube_subscribers":    _latest("total_subscribers"),
         "youtube_views_total":    _latest("total_views"),
         "youtube_views_recent":   _sum("views"),
         "youtube_revenue_recent": _sum("revenue"),
+        
+        # General/Legacy Keys (REQUIRED BY FRONTEND)
+        "subscribers":            _latest("total_subscribers"),
+        "total_views":            _latest("total_views"),
+        "revenue":                _sum("revenue"),
+        "watch_time_minutes":     _sum("watch_time_minutes"),
+        "avg_duration":           _latest("avg_view_duration"),
+        "total_videos":           _latest("total_videos"),
+        "subs_gained":            _sum("subs_gained"),
+        "subs_lost":              _sum("subs_lost"),
+
+        # ManyChat
         "manychat_subscribers":   _latest("manychat_subscribers",     source="manychat"),
         "manychat_growth":        _latest("manychat_growth_tools",    source="manychat"),
+        "total_flows":            _latest("manychat_total_flows",     source="manychat"),
+
+        # Instagram
         "ig_followers":           _latest("followers",                source="instagram"),
         "ig_media_count":         _latest("media_count",              source="instagram"),
         "ig_recent_reach":        _sum("total_reach",                 source="instagram"),
