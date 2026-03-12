@@ -315,18 +315,32 @@ def _upsert_ig_media_conn(conn, user_id: str, m: dict):
     )
 
 def _log(user_id: str, status: str, message: str, flow_id: str | None = None):
-    with get_db() as conn:
-        try:
-            conn.execute("INSERT INTO sync_logs (user_id, status, message, flow_id) VALUES (?, ?, ?, ?)", (user_id, status, message, flow_id))
-        except Exception as e:
-            error_str = str(e)
-            if "duplicate key" in error_str or "23505" in error_str:
-                # Postgres SERIAL sequence is out of sync — reset it and retry
-                try:
-                    conn.execute("SELECT setval('sync_logs_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM sync_logs))")
-                    conn.execute("INSERT INTO sync_logs (user_id, status, message, flow_id) VALUES (?, ?, ?, ?)", (user_id, status, message, flow_id))
-                except Exception:
-                    pass  # Non-critical: don't crash sync over a log entry
-            else:
-                print(f"[SYNC LOG ERROR] {e}")
+    """Defensive logging that never crashes the main process."""
+    try:
+        with get_db() as conn:
+            try:
+                conn.execute(
+                    "INSERT INTO sync_logs (user_id, status, message, flow_id) VALUES (?, ?, ?, ?)", 
+                    (user_id, status, message, flow_id)
+                )
+            except Exception as e:
+                error_str = str(e)
+                if "duplicate key" in error_str or "23505" in error_str:
+                    # Postgres SERIAL sequence is out of sync — reset it and retry
+                    try:
+                        conn.rollback() # Clear aborted state
+                        conn.execute("SELECT setval('sync_logs_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM sync_logs), false)")
+                        conn.execute(
+                            "INSERT INTO sync_logs (user_id, status, message, flow_id) VALUES (?, ?, ?, ?)", 
+                            (user_id, status, message, flow_id)
+                        )
+                    except Exception:
+                        pass # Still failed? Give up on logging this one
+                else:
+                    # Other DB error? Rollback so get_db's __exit__ doesn't fail on commit
+                    conn.rollback()
+                    print(f"[SYNC LOG ERROR] {e}")
+    except Exception as e:
+        # Catch errors from get_db itself (e.g. connection issues)
+        print(f"[CRITICAL LOG ERROR] {e}")
 

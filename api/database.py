@@ -252,6 +252,11 @@ def _init_schema(conn):
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
+    if is_postgres:
+        try:
+            conn.execute("SELECT setval('sync_logs_id_seq', (SELECT COALESCE(MAX(id), 0) + 1 FROM sync_logs), false)")
+        except Exception: pass
+
     _safe_migrate_conn(conn)
 
 def init_db():
