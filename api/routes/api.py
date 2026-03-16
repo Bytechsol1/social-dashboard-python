@@ -70,7 +70,8 @@ async def get_youtube_auth_url(request: Request):
         
         scopes = [
             "https://www.googleapis.com/auth/yt-analytics.readonly",
-            "https://www.googleapis.com/auth/youtube.readonly"
+            "https://www.googleapis.com/auth/youtube.readonly",
+            "https://www.googleapis.com/auth/youtube.force-ssl"
         ]
         
         params = {
@@ -204,6 +205,48 @@ async def connect_instagram(request: Request, data: InstagramToken):
         )
     return {"success": True, "ig_user_id": ig_user_id}
 
+class YoutubeReplyRequest(BaseModel):
+    parentId: str
+    text: str
+
+@router.get("/youtube/comments")
+async def get_youtube_comments(request: Request):
+    from api.services.youtube_comments import fetch_comments
+    user_id = _get_user_id(request)
+    try:
+        comments = await fetch_comments(user_id)
+        return {"success": True, "comments": comments}
+    except Exception as e:
+        import traceback
+        print(f"[YOUTUBE COMMENTS ERROR]")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/youtube/comments/reply")
+async def post_youtube_reply(request: Request, data: YoutubeReplyRequest):
+    from api.services.youtube_comments import post_reply
+    user_id = _get_user_id(request)
+    try:
+        res = await post_reply(user_id, data.parentId, data.text)
+        return {"success": True, "reply": res}
+    except Exception as e:
+        print(f"[YOUTUBE REPLY ERROR] {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class DeleteCommentRequest(BaseModel):
+    commentId: str
+
+@router.post("/youtube/comments/delete")
+async def post_delete_comment(request: Request, data: DeleteCommentRequest):
+    from api.services.youtube_comments import delete_comment
+    user_id = _get_user_id(request)
+    try:
+        await delete_comment(user_id, data.commentId)
+        return {"success": True}
+    except Exception as e:
+        print(f"[YOUTUBE DELETE ERROR] {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/sync")
 async def trigger_sync(request: Request):
     user_id = _get_user_id(request)
@@ -213,6 +256,7 @@ async def trigger_sync(request: Request):
 @router.get("/dashboard")
 async def get_dashboard_data(request: Request):
     user_id = _get_user_id(request)
+    days = int(request.query_params.get("days", "30"))
     storage = get_storage_engine()
     
     with get_db() as conn:
@@ -249,10 +293,20 @@ async def get_dashboard_data(request: Request):
 
         # Process metrics into chart format
         chart_map = {}
+        cutoff_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
         for r in rows:
             d = r["date"]
+            if d < cutoff_date:
+                continue
             if d not in chart_map:
-                chart_map[d] = {"date": d, "youtube_views": 0, "youtube_revenue": 0, "manychat_subscribers": 0, "instagram_followers": 0}
+                chart_map[d] = {
+                    "date": d, 
+                    "youtube_views": 0, 
+                    "youtube_revenue": 0, 
+                    "manychat_subscribers": 0, 
+                    "instagram_followers": 0,
+                    "instagram_reach": 0
+                }
             
             if r["source"] == "youtube":
                 if r["metric_name"] == "views": chart_map[d]["youtube_views"] = r["value"]
@@ -261,21 +315,29 @@ async def get_dashboard_data(request: Request):
                 if r["metric_name"] == "manychat_subscribers": chart_map[d]["manychat_subscribers"] = r["value"]
             elif r["source"] == "instagram":
                 if r["metric_name"] == "followers": chart_map[d]["instagram_followers"] = r["value"]
+                if r["metric_name"] == "total_reach": chart_map[d]["instagram_reach"] = r["value"]
 
         # Recent summary
         def _latest(name, source="youtube"):
             return next((r["value"] for r in reversed(rows) if r["metric_name"] == name and r["source"] == source), 0)
             
-        def _sum(name, source="youtube", days=7):
-            cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        def _sum(name, source="youtube", custom_days=None):
+            target_days = custom_days if custom_days is not None else days
+            cutoff = (datetime.now() - timedelta(days=target_days)).strftime("%Y-%m-%d")
             return sum(r["value"] for r in rows if r["metric_name"] == name and r["source"] == source and r["date"] >= cutoff)
 
+        # Calculate individual platform reach for the selected period
+        yt_reach = _sum("views", source="youtube")
+        ig_reach = _sum("total_reach", source="instagram")
+        mc_reach = _sum("manychat_active_widgets", source="manychat")
+
         summary = {
-            # YouTube Specific (Specific Keys)
+            # YouTube Specific
             "youtube_subscribers":    _latest("total_subscribers"),
             "youtube_views_total":    _latest("total_views"),
-            "youtube_views_recent":   _sum("views"),
+            "youtube_views_recent":   yt_reach,
             "youtube_revenue_recent": _sum("revenue"),
+            "youtube_reach":          yt_reach,
             
             # General/Legacy Keys (REQUIRED BY FRONTEND)
             "subscribers":            _latest("total_subscribers"),
@@ -291,15 +353,20 @@ async def get_dashboard_data(request: Request):
             "manychat_subscribers":   _latest("manychat_subscribers",     source="manychat"),
             "manychat_growth":        _latest("manychat_growth_tools",    source="manychat"),
             "total_flows":            _latest("manychat_total_flows",     source="manychat"),
+            "manychat_reach":         mc_reach,
 
             # Instagram
             "ig_followers":           _latest("followers",                source="instagram"),
             "ig_media_count":         _latest("media_count",              source="instagram"),
-            "ig_recent_reach":        _sum("total_reach",                 source="instagram"),
+            "ig_recent_reach":        ig_reach,
             "ig_recent_impressions":  _sum("total_impressions",           source="instagram"),
             "ig_total_likes":         _latest("total_likes",              source="instagram"),
             "ig_total_comments":      _latest("total_comments",           source="instagram"),
             "ig_total_interactions":  _latest("total_interactions",       source="instagram"),
+            "instagram_reach":        ig_reach,
+
+            # Feature: Combined Reach
+            "combined_reach":         yt_reach + ig_reach + mc_reach
         }
 
         # Process demographics
