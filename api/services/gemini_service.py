@@ -1,11 +1,11 @@
 import os
 import json
 import re
-import google.generativeai as genai
 from datetime import datetime
 
 class GeminiService:
     def __init__(self):
+        import google.generativeai as genai
         api_key = os.environ.get("GEMINI_API_KEY")
         if api_key:
             genai.configure(api_key=api_key)
