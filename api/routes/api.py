@@ -726,8 +726,32 @@ async def get_scheduled_posts(request: Request):
 async def cancel_scheduled_post(request: Request, post_id: int):
     user_id = _get_user_id(request)
     with get_db() as conn:
+        # 1. Fetch info before delete
+        post = conn.execute(
+            "SELECT ig_media_id FROM instagram_posts WHERE id = ? AND user_id = ?",
+            (post_id, user_id)
+        ).fetchone()
+        
+        if post and post.get("ig_media_id"):
+            ig_media_id = post["ig_media_id"]
+            
+            # Fetch user credentials
+            user_row = conn.execute(
+                "SELECT ig_access_token FROM users WHERE id = ?",
+                (user_id,)
+            ).fetchone()
+            
+            if user_row and user_row.get("ig_access_token"):
+                token = decrypt(user_row["ig_access_token"])
+                ig_service = InstagramService(token)
+                try:
+                    await ig_service.delete_media(ig_media_id)
+                except Exception as e:
+                    print(f"[ERROR] Failed to delete media on Insta: {e}")
+
+        # 2. Delete local record
         conn.execute(
-            "DELETE FROM instagram_posts WHERE id = ? AND user_id = ? AND status = 'pending'",
+            "DELETE FROM instagram_posts WHERE id = ? AND user_id = ?",
             (post_id, user_id)
         )
     return {"success": True}

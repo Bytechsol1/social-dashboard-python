@@ -213,3 +213,16 @@ class InstagramService:
             await asyncio.sleep(5) 
             
         return await self.publish_media_container(ig_user_id, creation_id)
+
+    async def delete_media(self, ig_media_id: str) -> bool:
+        """Delete a published media item from Instagram."""
+        client = await self._get_client()
+        res = await client.delete(
+            f"{self.BASE_URL}/{ig_media_id}",
+            params={"access_token": self.access_token}
+        )
+        data = res.json()
+        if not data.get("success"):
+            print(f"[IG SERVICE] Failed to delete media {ig_media_id}: {data}")
+            return False
+        return True

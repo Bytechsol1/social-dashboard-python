@@ -10,7 +10,7 @@ scheduler = AsyncIOScheduler()
 
 async def check_and_publish_posts():
     """Polls the database for due posts and publishes them."""
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[SCHEDULER] Checking for posts due at {now}...")
     
     with get_db() as conn:
