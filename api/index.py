@@ -52,6 +52,15 @@ async def global_exception_handler(request, exc):
 
 # Router and Route Initialization
 BOOT_ERROR = None
+
+@app.get("/api/crash-status")
+def get_crash_status():
+    import os
+    return {
+        "boot_error": BOOT_ERROR,
+        "env": {k: "set" for k, v in os.environ.items() if v}
+    }
+
 api_router = None
 debug_router = None
 
