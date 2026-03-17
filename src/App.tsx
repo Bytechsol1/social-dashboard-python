@@ -20,7 +20,9 @@ import {
   Moon,
   X,
   Code2,
-  Instagram
+  Instagram,
+  Sparkles,
+  Calendar
 } from 'lucide-react';
 import {
   AreaChart,
@@ -36,6 +38,9 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+
+import { AIStrategyModal } from './components/AIStrategyModal';
+import { InstagramScheduler } from './components/InstagramScheduler';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -111,6 +116,7 @@ const YT_TABS = [
 
 const IG_TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'scheduler', label: 'Scheduler', icon: Calendar },
   { id: 'media', label: 'Media Highlights', icon: BarChart3 },
   { id: 'insights', label: 'Growth Insights', icon: Activity },
 ];
@@ -147,7 +153,7 @@ function ctrBadgeClass(ctr: number | null | undefined): string {
   return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
 }
 
-export default function App() {
+export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyModalOpen: (open: boolean) => void, setStrategyVideoId: (id: string | null) => void }) {
   const [data, setData] = useState<any>(null);
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -163,6 +169,7 @@ export default function App() {
   const [trendsIdeas, setTrendsIdeas] = useState<any[]>([]);
   const [trendsLoading, setTrendsLoading] = useState(false);
   const [trendsError, setTrendsError] = useState('');
+  
   const [expandedIdea, setExpandedIdea] = useState<number | null>(null);
   const [copyMsg, setCopyMsg] = useState<number | null>(null);
   const [ytIdeas, setYtIdeas] = useState<any[]>([]);
@@ -878,11 +885,24 @@ export default function App() {
                                         <td className="px-6 py-5 text-right text-[10px] font-bold text-slate-600 uppercase">
                                           {vid.published_at ? new Date(vid.published_at).toLocaleDateString() : 'N/A'}
                                         </td>
+                                        <td className="px-6 py-5 text-right">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setStrategyVideoId(vid.id);
+                                              setStrategyModalOpen(true);
+                                            }}
+                                            className="px-3 py-1.5 bg-brand-yt/10 hover:bg-brand-yt/20 text-brand-yt rounded-xl text-[10px] font-black uppercase tracking-widest transition-all inline-flex items-center gap-1.5 border border-brand-yt/20"
+                                          >
+                                            <Sparkles className="w-3 h-3" />
+                                            AI Strategy
+                                          </button>
+                                        </td>
                                       </tr>
                                     ))
                                   ) : (
                                     <tr>
-                                      <td colSpan={4} className="py-20 text-center">
+                                      <td colSpan={5} className="py-20 text-center">
                                         <div className="flex flex-col items-center gap-4 opacity-20">
                                           <Youtube className="w-12 h-12" />
                                           <p className="text-xs font-black tracking-[0.3em] uppercase text-slate-900 dark:text-white">No Video Data Available</p>
@@ -1261,175 +1281,222 @@ export default function App() {
                       </h2>
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.4em] mt-3">Visual content & engagement intelligence</p>
                     </div>
+
+                    <div className="flex items-center gap-1 bg-slate-900/5 dark:bg-white/5 p-1 rounded-2xl border border-slate-900/5 dark:border-white/5">
+                      {IG_TABS.map((tab) => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={cn(
+                            "flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all duration-300",
+                            activeTab === tab.id
+                              ? "bg-slate-900/10 dark:bg-white/10 text-slate-900 dark:text-white shadow-lg ring-1 ring-slate-900/10 dark:ring-white/10"
+                              : "text-slate-500 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-900/5 dark:bg-white/5"
+                          )}
+                        >
+                          <tab.icon className="w-4 h-4" />
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard title="Followers" value={data?.summary?.ig_followers} icon={Users} color="brand-ig" />
-                    <StatCard title="Total Interactions" value={data?.summary?.ig_total_interactions} icon={Zap} color="brand-ig" delta={5} />
-                    <StatCard title="Total Likes" value={data?.summary?.ig_total_likes} icon={TrendingUp} color="brand-ig" />
-                    <StatCard title="Reach (28d)" value={data?.summary?.ig_recent_reach} icon={Activity} color="brand-ig" />
-                  </div>
+                  <AnimatePresence mode="wait">
+                    {activeTab === 'overview' && (
+                      <motion.div
+                        key="overview"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-10"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                          <StatCard title="Followers" value={data?.summary?.ig_followers} icon={Users} color="brand-ig" />
+                          <StatCard title="Total Interactions" value={data?.summary?.ig_total_interactions} icon={Zap} color="brand-ig" delta={5} />
+                          <StatCard title="Total Likes" value={data?.summary?.ig_total_likes} icon={TrendingUp} color="brand-ig" />
+                          <StatCard title="Reach (28d)" value={data?.summary?.ig_recent_reach} icon={Activity} color="brand-ig" />
+                        </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                    <div className="lg:col-span-2 space-y-8">
-                       <Card className="p-0 overflow-hidden">
-                        <div className="p-8 border-b border-slate-900/10 dark:border-white/10 flex items-center justify-between bg-white/[0.02]">
-                          <div>
-                            <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Recent Media</h3>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Post & Reel Performance Matrix</p>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                          <div className="lg:col-span-2 space-y-8">
+                            <Card className="p-0 overflow-hidden">
+                              <div className="p-8 border-b border-slate-900/10 dark:border-white/10 flex items-center justify-between bg-white/[0.02]">
+                                <div>
+                                  <h3 className="font-black text-slate-900 dark:text-white text-xl tracking-tight">Recent Media</h3>
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Post & Reel Performance Matrix</p>
+                                </div>
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                  <thead className="bg-slate-50 dark:bg-[#0B0E14] border-b border-slate-900/5 dark:border-white/5">
+                                    <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                      <th className="px-8 py-6">Media</th>
+                                      <th className="px-8 py-6 text-right">Reach/Views</th>
+                                      <th className="px-8 py-6 text-right">Engagement</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-900/5 dark:divide-white/5">
+                                    {data?.ig_media?.map((m: any) => (
+                                      <tr key={m.id} className="hover:bg-brand-ig/5 transition-colors group">
+                                        <td className="px-8 py-6">
+                                          <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-lg bg-slate-800 overflow-hidden flex-shrink-0 border border-white/5">
+                                              {m.media_url ? <img src={m.media_url} className="w-full h-full object-cover" /> : <InstagramIcon className="w-6 h-6 m-3 opacity-20" />}
+                                            </div>
+                                            <div className="flex flex-col">
+                                              <span className="text-xs font-black text-slate-900 dark:text-white truncate max-w-[200px]">{m.caption || 'No caption'}</span>
+                                              <span className="text-[9px] font-bold text-slate-500 mt-1 uppercase">{m.media_type} • {new Date(m.timestamp).toLocaleDateString()}</span>
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td className="px-8 py-6 text-right font-black text-sm">{m.view_count?.toLocaleString() || '—'}</td>
+                                        <td className="px-8 py-6 text-right">
+                                          <div className="flex flex-col items-end">
+                                            <span className="text-xs font-black text-brand-ig">{m.like_count?.toLocaleString() || 0} LIKES</span>
+                                            <span className="text-[9px] font-bold text-slate-500">{m.comments_count?.toLocaleString() || 0} COMMENTS</span>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                    {(!data?.ig_media || data.ig_media.length === 0) && (
+                                      <tr>
+                                        <td colSpan={3} className="px-8 py-20 text-center text-slate-500 font-bold uppercase tracking-widest text-xs">No media data synced yet</td>
+                                      </tr>
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </Card>
+
+                            {/* Instagram Audience Demographics */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                              <Card className="bg-white/5 border-white/10">
+                                <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                  <Users className="w-4 h-4 text-brand-ig" />
+                                  Top Countries
+                                </h3>
+                                <div className="space-y-4">
+                                  {data?.demographics?.instagram?.countries?.length > 0 ? (
+                                    data.demographics.instagram.countries.map((c: any, i: number) => (
+                                      <div key={i} className="space-y-2">
+                                        <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400">
+                                          <span>{c.country}</span>
+                                          <span className="text-white">{c.views.toLocaleString()}</span>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                          <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${data?.demographics?.instagram?.countries?.[0]?.views ? (c.views / data.demographics.instagram.countries[0].views) * 100 : 0}%` }}
+                                            className="h-full bg-brand-ig"
+                                          />
+                                        </div>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="py-10 text-center flex flex-col items-center gap-3">
+                                      <Users className="w-8 h-8 text-brand-ig/20 animate-pulse" />
+                                      <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Regional Data Locked</p>
+                                        <p className="text-[7px] font-bold text-slate-600 uppercase tracking-tighter max-w-[150px] mx-auto leading-relaxed">
+                                          Requires 100+ followers for demographic insights.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </Card>
+
+                              <Card className="bg-white/5 border-white/10">
+                                <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                  <Target className="w-4 h-4 text-brand-ig" />
+                                  Top Cities
+                                </h3>
+                                <div className="space-y-4">
+                                  {data?.demographics?.instagram?.cities?.length > 0 ? (
+                                    data.demographics.instagram.cities.map((c: any, i: number) => (
+                                      <div key={i} className="flex justify-between items-center p-3 bg-white/[0.03] rounded-xl border border-white/5">
+                                        <span className="text-[10px] font-black text-white uppercase">{c.city}</span>
+                                        <span className="text-[10px] font-bold text-brand-ig">{c.value.toLocaleString()}</span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="py-10 text-center text-[10px] font-bold text-slate-600 uppercase">Awaiting GEO Insights...</p>
+                                  )}
+                                </div>
+                              </Card>
+                            </div>
+                          </div>
+
+                          <div className="space-y-8">
+                            <Card className="bg-brand-ig/[0.03]">
+                                <h3 className="font-black text-slate-900 dark:text-white tracking-tight mb-8 uppercase text-xs text-brand-ig flex items-center gap-2">
+                                <Activity className="w-4 h-4" />
+                                Reach Trend Snapshot
+                                </h3>
+                                <div className="h-[250px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={(data?.chartData || []).filter((d: any) => d.instagram_total_reach)}>
+                                    <defs>
+                                        <linearGradient id="colorReach" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#E1306C" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#E1306C" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <Area type="monotone" dataKey="instagram_total_reach" stroke="#E1306C" fillOpacity={1} fill="url(#colorReach)" strokeWidth={3} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                                </div>
+                            </Card>
+
+                            <Card className="bg-brand-ig/[0.05] border-brand-ig/20">
+                                <h3 className="text-[10px] font-black text-brand-ig uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Zap className="w-4 h-4" />
+                                Age & Gender Matrix
+                                </h3>
+                                <div className="space-y-5">
+                                {Object.keys(data?.demographics?.instagram?.ageGender || {}).length > 0 ? (
+                                    Object.entries(data.demographics.instagram.ageGender).slice(0, 6).map(([label, val]: any) => (
+                                        <div key={label} className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-white uppercase">{label.replace('.', ' ')}</span>
+                                            <div className="h-1 w-24 bg-white/5 rounded-full mt-1 overflow-hidden">
+                                            <div className="h-full bg-brand-ig/50" style={{ width: `${Math.max(...Object.values(data?.demographics?.instagram?.ageGender || {}) as number[]) > 0 ? (val / (Math.max(...Object.values(data?.demographics?.instagram?.ageGender || {}) as number[]))) * 100 : 0}%` }} />
+                                            </div>
+                                        </div>
+                                        <span className="text-xs font-black text-white">{val.toLocaleString()}</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="py-20 text-center">
+                                    <Clock className="w-8 h-8 text-brand-ig/20 mx-auto mb-3" />
+                                    <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Processing demographic packets</p>
+                                    </div>
+                                )}
+                                </div>
+                            </Card>
                           </div>
                         </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left">
-                            <thead className="bg-slate-50 dark:bg-[#0B0E14] border-b border-slate-900/5 dark:border-white/5">
-                              <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                <th className="px-8 py-6">Media</th>
-                                <th className="px-8 py-6 text-right">Reach/Views</th>
-                                <th className="px-8 py-6 text-right">Engagement</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-900/5 dark:divide-white/5">
-                              {data?.ig_media?.map((m: any) => (
-                                <tr key={m.id} className="hover:bg-brand-ig/5 transition-colors group">
-                                  <td className="px-8 py-6">
-                                    <div className="flex items-center gap-4">
-                                      <div className="w-12 h-12 rounded-lg bg-slate-800 overflow-hidden flex-shrink-0 border border-white/5">
-                                        {m.media_url ? <img src={m.media_url} className="w-full h-full object-cover" /> : <InstagramIcon className="w-6 h-6 m-3 opacity-20" />}
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-xs font-black text-slate-900 dark:text-white truncate max-w-[200px]">{m.caption || 'No caption'}</span>
-                                        <span className="text-[9px] font-bold text-slate-500 mt-1 uppercase">{m.media_type} • {new Date(m.timestamp).toLocaleDateString()}</span>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-8 py-6 text-right font-black text-sm">{m.view_count?.toLocaleString() || '—'}</td>
-                                  <td className="px-8 py-6 text-right">
-                                    <div className="flex flex-col items-end">
-                                      <span className="text-xs font-black text-brand-ig">{m.like_count?.toLocaleString() || 0} LIKES</span>
-                                      <span className="text-[9px] font-bold text-slate-500">{m.comments_count?.toLocaleString() || 0} COMMENTS</span>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                              {(!data?.ig_media || data.ig_media.length === 0) && (
-                                <tr>
-                                  <td colSpan={3} className="px-8 py-20 text-center text-slate-500 font-bold uppercase tracking-widest text-xs">No media data synced yet</td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                       </Card>
+                      </motion.div>
+                    )}
 
-                       {/* Instagram Audience Demographics */}
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          <Card className="bg-white/5 border-white/10">
-                            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                              <Users className="w-4 h-4 text-brand-ig" />
-                              Top Countries
-                            </h3>
-                            <div className="space-y-4">
-                              {data?.demographics?.instagram?.countries?.length > 0 ? (
-                                data.demographics.instagram.countries.map((c: any, i: number) => (
-                                  <div key={i} className="space-y-2">
-                                    <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400">
-                                      <span>{c.country}</span>
-                                      <span className="text-white">{c.views.toLocaleString()}</span>
-                                    </div>
-                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                      <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${data?.demographics?.instagram?.countries?.[0]?.views ? (c.views / data.demographics.instagram.countries[0].views) * 100 : 0}%` }}
-                                        className="h-full bg-brand-ig"
-                                      />
-                                    </div>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="py-10 text-center flex flex-col items-center gap-3">
-                                  <Users className="w-8 h-8 text-brand-ig/20 animate-pulse" />
-                                  <div className="space-y-1">
-                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Regional Data Locked</p>
-                                    <p className="text-[7px] font-bold text-slate-600 uppercase tracking-tighter max-w-[150px] mx-auto leading-relaxed">
-                                      Requires 100+ followers for demographic insights.
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </Card>
+                    {activeTab === 'scheduler' && (
+                      <motion.div
+                        key="scheduler"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                      >
+                        <InstagramScheduler />
+                      </motion.div>
+                    )}
 
-                          <Card className="bg-white/5 border-white/10">
-                            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                              <Target className="w-4 h-4 text-brand-ig" />
-                              Top Cities
-                            </h3>
-                            <div className="space-y-4">
-                               {data?.demographics?.instagram?.cities?.length > 0 ? (
-                                data.demographics.instagram.cities.map((c: any, i: number) => (
-                                  <div key={i} className="flex justify-between items-center p-3 bg-white/[0.03] rounded-xl border border-white/5">
-                                    <span className="text-[10px] font-black text-white uppercase">{c.city}</span>
-                                    <span className="text-[10px] font-bold text-brand-ig">{c.value.toLocaleString()}</span>
-                                  </div>
-                                ))
-                               ) : (
-                                <p className="py-10 text-center text-[10px] font-bold text-slate-600 uppercase">Awaiting GEO Insights...</p>
-                               )}
-                            </div>
-                          </Card>
-                       </div>
-                    </div>
-
-                    <div className="space-y-8">
-                      <Card className="bg-brand-ig/[0.03]">
-                        <h3 className="font-black text-slate-900 dark:text-white tracking-tight mb-8 uppercase text-xs text-brand-ig flex items-center gap-2">
-                          <Activity className="w-4 h-4" />
-                          Reach Trend Snapshot
-                        </h3>
-                        <div className="h-[250px]">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={(data?.chartData || []).filter((d: any) => d.instagram_total_reach)}>
-                              <defs>
-                                <linearGradient id="colorReach" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#E1306C" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#E1306C" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <Area type="monotone" dataKey="instagram_total_reach" stroke="#E1306C" fillOpacity={1} fill="url(#colorReach)" strokeWidth={3} />
-                              <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </Card>
-
-                      <Card className="bg-brand-ig/[0.05] border-brand-ig/20">
-                        <h3 className="text-[10px] font-black text-brand-ig uppercase tracking-widest mb-6 flex items-center gap-2">
-                          <Zap className="w-4 h-4" />
-                          Age & Gender Matrix
-                        </h3>
-                        <div className="space-y-5">
-                           {Object.keys(data?.demographics?.instagram?.ageGender || {}).length > 0 ? (
-                              Object.entries(data.demographics.instagram.ageGender).slice(0, 6).map(([label, val]: any) => (
-                                <div key={label} className="flex items-center justify-between">
-                                  <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-white uppercase">{label.replace('.', ' ')}</span>
-                                    <div className="h-1 w-24 bg-white/5 rounded-full mt-1 overflow-hidden">
-                                      <div className="h-full bg-brand-ig/50" style={{ width: `${Math.max(...Object.values(data?.demographics?.instagram?.ageGender || {}) as number[]) > 0 ? (val / (Math.max(...Object.values(data?.demographics?.instagram?.ageGender || {}) as number[]))) * 100 : 0}%` }} />
-                                    </div>
-                                  </div>
-                                  <span className="text-xs font-black text-white">{val.toLocaleString()}</span>
-                                </div>
-                              ))
-                           ) : (
-                            <div className="py-20 text-center">
-                              <Clock className="w-8 h-8 text-brand-ig/20 mx-auto mb-3" />
-                              <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Processing demographic packets</p>
-                            </div>
-                           )}
-                        </div>
-                      </Card>
-                    </div>
-                  </div>
+                    {(activeTab === 'media' || activeTab === 'insights') && (
+                       <motion.div key="legacy" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                          <p className="py-20 text-center font-bold text-slate-500 uppercase tracking-widest">Tab content remains in Overview for now.</p>
+                       </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               )}
 
@@ -1830,5 +1897,17 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function AppWrapper() {
+  const [strategyModalOpen, setStrategyModalOpen] = useState(false);
+  const [strategyVideoId, setStrategyVideoId] = useState<string | null>(null);
+
+  return (
+    <>
+      <App setStrategyModalOpen={setStrategyModalOpen} setStrategyVideoId={setStrategyVideoId} />
+      <AIStrategyModal isOpen={strategyModalOpen} onClose={() => setStrategyModalOpen(false)} videoId={strategyVideoId} />
+    </>
   );
 }

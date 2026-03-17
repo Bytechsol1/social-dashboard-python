@@ -1,5 +1,6 @@
 import os
 import httpx
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional, List, Dict
 
@@ -140,3 +141,75 @@ class InstagramService:
         except Exception as e:
             print(f"[IG SERVICE] Error fetching media list: {e}")
             return []
+    async def create_media_container(self, ig_user_id: str, media_url: str, caption: str, media_type: str = "IMAGE") -> str:
+        """Create a media container on Instagram (Step 1 of posting)."""
+        client = await self._get_client()
+        params = {
+            "caption": caption,
+            "access_token": self.access_token
+        }
+        
+        if media_type == "VIDEO":
+            params["video_url"] = media_url
+            params["media_type"] = "REELS" # Or VIDEO, but REELS is usually preferred now
+        else:
+            params["image_url"] = media_url
+
+        res = await client.post(
+            f"{self.BASE_URL}/{ig_user_id}/media",
+            params=params
+        )
+        data = res.json()
+        if "id" not in data:
+            raise Exception(f"Failed to create media container: {data}")
+        return data["id"]
+
+    async def get_container_status(self, container_id: str) -> str:
+        """Check the status of a media container (required for videos)."""
+        client = await self._get_client()
+        res = await client.get(
+            f"{self.BASE_URL}/{container_id}",
+            params={
+                "fields": "status_code",
+                "access_token": self.access_token
+            }
+        )
+        data = res.json()
+        return data.get("status_code", "IN_PROGRESS")
+
+    async def publish_media_container(self, ig_user_id: str, creation_id: str) -> str:
+        """Publish a previously created media container (Step 2 of posting)."""
+        client = await self._get_client()
+        res = await client.post(
+            f"{self.BASE_URL}/{ig_user_id}/media_publish",
+            params={
+                "creation_id": creation_id,
+                "access_token": self.access_token
+            }
+        )
+        data = res.json()
+        if "id" not in data:
+            raise Exception(f"Failed to publish media: {data}")
+        return data["id"]
+
+    async def post_media(self, ig_user_id: str, media_url: str, caption: str, media_type: str = "IMAGE") -> str:
+        """Helper to do both steps of posting in one go."""
+        creation_id = await self.create_media_container(ig_user_id, media_url, caption, media_type)
+        
+        # Poll for status if it's a video
+        if media_type == "VIDEO":
+            max_retries = 60 # 5 minutes max
+            for _ in range(max_retries):
+                status = await self.get_container_status(creation_id)
+                if status == "FINISHED":
+                    break
+                if status == "ERROR":
+                    raise Exception("Media container processing failed")
+                await asyncio.sleep(5)
+            else:
+                raise Exception("Media container processing timed out")
+        else:
+            # Meta recommends waiting a bit even for images
+            await asyncio.sleep(5) 
+            
+        return await self.publish_media_container(ig_user_id, creation_id)

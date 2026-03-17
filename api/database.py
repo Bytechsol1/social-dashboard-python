@@ -121,7 +121,7 @@ def get_connection():
                     host=target_host,
                     port=port,
                     database=result.path.lstrip('/'),
-                    timeout=20,
+                    timeout=3,
                     ssl_context=True if db_url and ("supabase" in db_url or "neon" in db_url) else None
                 )
 
@@ -188,6 +188,7 @@ def _init_schema(conn):
             ig_access_token TEXT,
             ig_user_id TEXT,
             ig_audience_json TEXT,
+            ig_daily_post_time TEXT DEFAULT '18:00',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS metrics (
@@ -269,6 +270,20 @@ def _init_schema(conn):
             reason TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS instagram_posts (
+            id {id_type},
+            user_id TEXT,
+            media_url TEXT,
+            caption TEXT,
+            media_type TEXT DEFAULT 'IMAGE',
+            scheduled_at TIMESTAMP,
+            status TEXT DEFAULT 'pending',
+            ig_media_id TEXT,
+            error_message TEXT,
+            is_queued BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     """)
     if is_postgres:
         try:
@@ -280,6 +295,69 @@ def _init_schema(conn):
 def init_db():
     with get_db() as conn:
         _init_schema(conn)
+        _seed_demo_user(conn)
+
+def _seed_demo_user(conn):
+    """Seed the demo user with credentials from .env if available."""
+    demo_id = os.environ.get("VITE_DEMO_USER_ID")
+    if not demo_id:
+        return
+        
+    print(f"[DB] Checking demo user: {demo_id}")
+    
+    # Simple check to see if user exists
+    user = conn.execute("SELECT id, ig_access_token, ig_user_id FROM users WHERE id = ?", (demo_id,)).fetchone()
+    
+    from api.encryption import encrypt
+    ig_token = os.environ.get("INSTAGRAM_ACCESS_TOKEN")
+    
+    # We always ensure the user exists
+    if not user:
+        print(f"[DB] Seeding new demo user: {demo_id}")
+        conn.execute("INSERT INTO users (id, email) VALUES (?, ?)", (demo_id, "demo@example.com"))
+    
+    # Update token if missing
+    if ig_token and (not user or not user["ig_access_token"]):
+        print("[DB] Updating demo user with INSTAGRAM_ACCESS_TOKEN from .env")
+        encrypted_token = encrypt(ig_token)
+        conn.execute("UPDATE users SET ig_access_token = ? WHERE id = ?", (encrypted_token, demo_id))
+        user = conn.execute("SELECT id, ig_access_token, ig_user_id FROM users WHERE id = ?", (demo_id,)).fetchone()
+
+    # Update ID if missing
+    if ig_token and (not user or not user["ig_user_id"]):
+        print("[DB] Attempting to resolve missing IG User ID via sync request...")
+        try:
+            import httpx
+            # Call /me/accounts synchronously
+            with httpx.Client(timeout=30) as client:
+                res = client.get(
+                    "https://graph.facebook.com/v19.0/me/accounts",
+                    params={"access_token": ig_token}
+                )
+                data = res.json()
+                
+                ig_id = None
+                if "data" in data and data["data"]:
+                    for page in data["data"]:
+                        p_res = client.get(
+                            f"https://graph.facebook.com/v19.0/{page['id']}",
+                            params={
+                                "fields": "instagram_business_account",
+                                "access_token": ig_token
+                            }
+                        )
+                        p_data = p_res.json()
+                        if "instagram_business_account" in p_data:
+                            ig_id = p_data["instagram_business_account"]["id"]
+                            break
+                
+                if ig_id:
+                    print(f"[DB] Resolved IG User ID: {ig_id}")
+                    conn.execute("UPDATE users SET ig_user_id = ? WHERE id = ?", (ig_id, demo_id))
+                else:
+                    print("[DB WARNING] Instagram token in .env did not return a business account. Ensure it has ads_management, instagram_basic, instagram_content_publish, and pages_show_list permissions.")
+        except Exception as e:
+            print(f"[DB ERROR] Could not resolve IG ID during seeding: {e}")
 
 def _safe_migrate_conn(conn):
     migrations = [
@@ -290,6 +368,7 @@ def _safe_migrate_conn(conn):
         ("users", "ig_access_token", "TEXT"),
         ("users", "ig_user_id", "TEXT"),
         ("users", "ig_audience_json", "TEXT"),
+        ("users", "ig_daily_post_time", "TEXT DEFAULT '18:00'"),
     ]
     for table, column, col_type in migrations:
         try:

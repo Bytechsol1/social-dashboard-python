@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlencode, quote
 
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, HTTPException, Depends, File, UploadFile, Form
 from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
 from pydantic import BaseModel
 
@@ -13,6 +13,8 @@ from api.database import get_db, get_storage_engine
 from api.encryption import encrypt, decrypt
 from api.services.sync_engine import perform_sync
 from api.services.gemini_service import GeminiService
+from api.services.storage_service import StorageService
+from api.services.instagram_service import InstagramService
 
 router = APIRouter()
 
@@ -25,6 +27,14 @@ class ManyChatKey(BaseModel):
 
 class InstagramToken(BaseModel):
     token: str
+
+class SchedulePost(BaseModel):
+    caption: str
+    scheduled_at: str # ISO string
+    is_queued: bool = False
+
+class PostNowRequest(BaseModel):
+    caption: str
 
 # --- Helpers ---
 def _get_user_id(request: Request) -> str:
@@ -433,6 +443,28 @@ async def get_shorts_suggestions(request: Request, video_id: str, force: bool = 
                 
     return {"suggestions": suggestions}
 
+class StrategyRequest(BaseModel):
+    video_id: str
+
+@router.post("/ai/strategy")
+async def generate_ai_strategy(request: Request, body: StrategyRequest):
+    user_id = _get_user_id(request)
+    
+    with get_db() as conn:
+        video = conn.execute("SELECT title, description FROM youtube_videos WHERE id = ? AND user_id = ?", (body.video_id, user_id)).fetchone()
+        
+        ig_media = [dict(r) for r in conn.execute(
+            "SELECT caption, like_count, comments_count, media_type, timestamp FROM instagram_media WHERE user_id = ? ORDER BY timestamp DESC LIMIT 50", (user_id,)
+        ).fetchall()]
+    
+    title = video["title"] if video else "Unknown Video"
+    desc = video["description"] if video else "No description"
+    ig_context = json.dumps([{k: v for k, v in m.items() if v} for m in ig_media][:10]) # Send a sample to avoid token limit overflow
+
+    gemini = GeminiService()
+    strategy_markdown = await gemini.generate_viral_strategy(title, desc, ig_context)
+    return {"markdown": strategy_markdown}
+
 @router.get("/status")
 def get_status(request: Request):
     user_id = _get_user_id(request)
@@ -450,3 +482,174 @@ def get_status(request: Request):
     except Exception as e:
         print(f"[STATUS ERROR] {e}")
     return status
+
+@router.post("/settings/instagram")
+async def update_instagram_settings(request: Request, body: Dict[str, Any]):
+    user_id = _get_user_id(request)
+    post_time = body.get("daily_post_time")
+    with get_db() as conn:
+        conn.execute("UPDATE users SET ig_daily_post_time = ? WHERE id = ?", (post_time, user_id))
+    return {"success": True}
+
+@router.post("/instagram/schedule")
+async def schedule_instagram_post(
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    caption: str = Form(""),
+    scheduled_at: str = Form(""),
+    is_queued: str = Form("false")
+):
+    user_id = _get_user_id(request)
+    is_queued_bool = is_queued == "true"
+    
+    # Check if Instagram is linked and resolve ID if missing
+    with get_db() as conn:
+        user_row = conn.execute(
+            "SELECT ig_access_token, ig_user_id FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        
+        if not user_row or not user_row["ig_access_token"]:
+            raise HTTPException(status_code=400, detail="Instagram not connected. Please check your token in .env")
+        
+        ig_user_id = user_row["ig_user_id"]
+        if not ig_user_id:
+            print("[DEBUG] IG User ID missing for schedule, attempting to resolve...")
+            token = decrypt(user_row["ig_access_token"])
+            ig_service = InstagramService(token)
+            ig_user_id = await ig_service.get_user_id()
+            if not ig_user_id:
+                raise HTTPException(status_code=400, detail="Could not resolve Instagram Business ID. Your token might be blocked or invalid.")
+            # Save it
+            conn.execute("UPDATE users SET ig_user_id = ? WHERE id = ?", (ig_user_id, user_id))
+    
+    print(f"[DEBUG] Schedule request: caption={caption}, scheduled_at={scheduled_at}, is_queued={is_queued}")
+    if not file:
+        print("[DEBUG] No file received in request")
+        raise HTTPException(status_code=400, detail="DEBUG: No file found in request")
+
+    try:
+        # 1. Detect media type
+        media_type = "IMAGE"
+        if file.content_type and "video" in file.content_type:
+            media_type = "VIDEO"
+        
+        print(f"[DEBUG] Processing {media_type}: {file.filename}")
+
+        # 2. Upload to Supabase Storage
+        storage = StorageService()
+        content = await file.read()
+        media_url = await storage.upload_file(content, file.filename, file.content_type)
+        
+        # 3. Handle Queue Logic
+        if is_queued_bool:
+            with get_db() as conn:
+                user_row = conn.execute("SELECT ig_daily_post_time FROM users WHERE id = ?", (user_id,)).fetchone()
+                daily_time = user_row["ig_daily_post_time"] if user_row and user_row.get("ig_daily_post_time") else "18:00"
+                
+                # Find the last scheduled post in the queue
+                last_post = conn.execute(
+                    "SELECT scheduled_at FROM instagram_posts WHERE user_id = ? AND status = 'pending' ORDER BY scheduled_at DESC LIMIT 1",
+                    (user_id,)
+                ).fetchone()
+                
+                now = datetime.now(timezone.utc)
+                hour, minute = map(int, daily_time.split(":"))
+                
+                if last_post:
+                    try:
+                        last_time = datetime.strptime(last_post["scheduled_at"], "%Y-%m-%d %H:%M:%S")
+                        scheduled_at_dt = last_time + timedelta(days=1)
+                    except Exception:
+                        scheduled_at_dt = now.replace(hour=hour, minute=minute, second=0, microsecond=0) + timedelta(days=1)
+                else:
+                    scheduled_at_dt = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    if scheduled_at_dt <= now:
+                        scheduled_at_dt += timedelta(days=1)
+                
+                scheduled_at = scheduled_at_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        # 4. Save to DB
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO instagram_posts (user_id, media_url, caption, scheduled_at, media_type, is_queued, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (user_id, media_url, caption, scheduled_at, media_type, is_queued_bool, "pending")
+            )
+        
+        return {"success": True, "media_url": media_url, "scheduled_at": scheduled_at}
+    except Exception as e:
+        print(f"[ERROR] Scheduling failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/instagram/publish-now")
+async def publish_instagram_now(
+    request: Request,
+    file: UploadFile = File(...),
+    caption: str = Form("")
+):
+    user_id = _get_user_id(request)
+
+    # 1. Detect media type
+    media_type = "IMAGE"
+    if file.content_type and "video" in file.content_type:
+        media_type = "VIDEO"
+
+    # 2. Upload to Supabase Storage
+    storage = StorageService()
+    content = await file.read()
+    media_url = await storage.upload_file(content, file.filename, file.content_type)
+
+    # 3. Get user token
+    with get_db() as conn:
+        user_row = conn.execute(
+            "SELECT ig_access_token, ig_user_id FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        
+        if not user_row or not user_row["ig_access_token"]:
+            raise HTTPException(status_code=400, detail="Instagram not connected. Please check your token in .env")
+        
+        token = decrypt(user_row["ig_access_token"])
+        ig_user_id = user_row["ig_user_id"]
+
+        # 3.5 Auto-resolve IG User ID if missing
+        if not ig_user_id:
+            print("[DEBUG] IG User ID missing in DB, attempting to resolve...")
+            ig_service = InstagramService(token)
+            ig_user_id = await ig_service.get_user_id()
+            if not ig_user_id:
+                raise HTTPException(status_code=400, detail="Could not resolve Instagram Business ID. Your token might be blocked or invalid.")
+            # Save it for next time
+            with get_db() as update_conn:
+                update_conn.execute("UPDATE users SET ig_user_id = ? WHERE id = ?", (ig_user_id, user_id))
+        
+        # 4. Publish
+        ig_service = InstagramService(token)
+        ig_media_id = await ig_service.post_media(ig_user_id, media_url, caption, media_type)
+        
+        # 5. Save to history
+        conn.execute(
+            "INSERT INTO instagram_posts (user_id, media_url, caption, media_type, status, ig_media_id, scheduled_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (user_id, media_url, caption, media_type, "published", ig_media_id, datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"))
+        )
+
+    return {"success": True, "ig_media_id": ig_media_id}
+
+@router.get("/instagram/scheduled-posts")
+async def get_scheduled_posts(request: Request):
+    user_id = _get_user_id(request)
+    with get_db() as conn:
+        posts = [dict(r) for r in conn.execute(
+            "SELECT * FROM instagram_posts WHERE user_id = ? ORDER BY created_at DESC", (user_id,)
+        ).fetchall()]
+    return {"posts": posts}
+
+@router.delete("/instagram/scheduled-posts/{post_id}")
+async def cancel_scheduled_post(request: Request, post_id: int):
+    user_id = _get_user_id(request)
+    with get_db() as conn:
+        conn.execute(
+            "DELETE FROM instagram_posts WHERE id = ? AND user_id = ? AND status = 'pending'",
+            (post_id, user_id)
+        )
+    return {"success": True}

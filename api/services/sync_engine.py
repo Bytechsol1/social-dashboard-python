@@ -2,6 +2,8 @@
 import os
 import json
 import asyncio
+from dotenv import load_dotenv
+load_dotenv()
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 
@@ -149,12 +151,15 @@ def _sync_youtube_blocking(user_id: str, user: dict, refresh_token: str) -> str:
             try:
                 if ch_res.get("items"):
                     uploads_id = ch_res["items"][0].get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
+                    print(f"[SYNC] YouTube Uploads Playlist: {uploads_id}")
                     if uploads_id:
                         items = youtube.playlistItems().list(playlistId=uploads_id, part="contentDetails", maxResults=10).execute()
                         v_ids = [i["contentDetails"]["videoId"] for i in items.get("items", [])]
+                        print(f"[SYNC] Found {len(v_ids)} video IDs: {v_ids}")
                         if v_ids:
                             v_stats = youtube.videos().list(id=",".join(v_ids), part="snippet,statistics").execute()
                             for v in v_stats.get("items", []):
+                                print(f"[SYNC] Upserting video: {v['id']} - {v['snippet']['title']}")
                                 _upsert_video_conn(conn, user_id, {
                                     "id": v["id"], "title": v["snippet"]["title"], "published_at": v["snippet"]["publishedAt"],
                                     "view_count": int(v["statistics"].get("viewCount") or 0),
@@ -162,6 +167,8 @@ def _sync_youtube_blocking(user_id: str, user: dict, refresh_token: str) -> str:
                                     "comment_count": int(v["statistics"].get("commentCount") or 0),
                                     "thumbnail_url": v["snippet"]["thumbnails"].get("medium", {}).get("url", "")
                                 })
+                else:
+                    print("[SYNC] No YouTube channel found items.")
             except Exception as ve: print(f"[SYNC] YouTube videos skipped: {ve}")
 
         return "success"

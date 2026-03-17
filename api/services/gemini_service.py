@@ -9,7 +9,7 @@ class GeminiService:
         api_key = os.environ.get("GEMINI_API_KEY")
         if api_key:
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
         else:
             self.model = None
 
@@ -99,3 +99,205 @@ class GeminiService:
         except Exception as e:
             print(f"[GEMINI ERROR] Failed to suggest shorts: {e}")
             return []
+
+    async def generate_viral_strategy(self, video_title: str, video_description: str, ig_context: str):
+        if not self.model:
+            return "API Key Missing. Please set GEMINI_API_KEY to generate an advanced strategy."
+            
+        prompt = f"""
+You are an advanced AI Social Media Growth and Video Repurposing Agent.
+
+Your objective is to automatically analyze YouTube videos, identify the most engaging segments, convert them into viral short-form videos (Instagram Reels), analyze Instagram account performance, and generate optimized content strategies and scripts for future posts.
+
+Your goal is to maximize:
+- Views
+- Shares
+- Saves
+- Engagement rate
+- Follower growth
+
+You must operate with a data-driven approach.
+
+------------------------------------
+
+PART 1 — YOUTUBE VIDEO ANALYSIS
+
+Input:
+- YouTube video link (Using Title for Context): {video_title}
+- Video transcript (Using Description/Transcript Context): {video_description}
+- Timestamp data (Extracted continuously where available)
+- Engagement indicators if available
+
+Steps:
+
+1. Analyze the transcript and detect:
+   - strong hooks
+   - emotional reactions
+   - surprising statements
+   - educational insights
+   - humorous moments
+   - controversial or curiosity-driven lines
+
+2. Identify sections where:
+   - attention spikes
+   - topic intensity increases
+   - key ideas are delivered
+
+3. Select the best clips with high viral potential.
+
+Clip rules:
+- Duration: 15–45 seconds
+- Must contain a hook within the first 3 seconds
+- Must be understandable without the full video context
+
+Output format:
+
+Clip 1
+Start Time:
+End Time:
+Reason for Selection:
+Viral Score (1-100):
+
+Clip 2
+Start Time:
+End Time:
+Reason for Selection:
+Viral Score (1-100):
+
+------------------------------------
+
+PART 2 — REEL CREATION PLAN
+
+For every selected clip generate a full reel creation plan.
+
+Output:
+
+HOOK TEXT (first 3 seconds)
+
+REEL TITLE
+
+CAPTION (short and engaging)
+
+HASHTAGS (10–15 high performing hashtags)
+
+SUBTITLE STYLE
+
+EDITING INSTRUCTIONS:
+- zoom effects
+- jump cuts
+- subtitle placement
+- pacing suggestions
+
+MUSIC STYLE SUGGESTION
+
+------------------------------------
+
+PART 3 — INSTAGRAM ACCOUNT PERFORMANCE ANALYSIS
+
+Analyze the last 50 Instagram posts or reels.
+Here is the sampled data for analysis:
+{ig_context}
+
+Evaluate:
+- Views
+- Likes
+- Comments
+- Saves
+- Shares
+- Watch time
+- Reel completion rate
+
+Identify:
+
+1. Top 10 performing posts
+2. Most successful content themes
+3. Best performing hook styles
+4. Best video length
+5. Best caption format
+6. Best posting times
+7. Most engaging storytelling style
+
+Provide a summary:
+
+WINNING CONTENT PATTERN
+BEST POSTING TIME
+BEST REEL FORMAT
+BEST CAPTION STRUCTURE
+
+------------------------------------
+
+PART 4 — VIRAL CONTENT IDEAS
+
+Based on the analysis generate:
+
+10 Viral Reel Ideas
+5 Carousel Post Ideas
+5 Instagram Story Ideas
+
+For each Reel Idea include:
+
+TITLE
+
+HOOK (first 3 seconds)
+
+SCRIPT (15–30 seconds)
+
+SCENE BREAKDOWN
+
+CAPTION
+
+HASHTAGS
+
+CALL TO ACTION
+
+------------------------------------
+
+PART 5 — VIRAL OPTIMIZATION
+
+For each content idea provide:
+
+Viral Hook Style
+Suggested Thumbnail Text
+Emotional Trigger
+Audience Target
+Expected Engagement Rate
+Estimated Views
+Viral Probability Score (1–100)
+
+------------------------------------
+
+PART 6 — WEEKLY POSTING STRATEGY
+
+Create a 7-day content schedule including:
+
+Day
+Content Type
+Topic
+Hook
+Caption
+Hashtags
+Best Posting Time
+
+Goal: maximize Instagram growth and reach.
+
+------------------------------------
+
+FINAL GOAL
+
+Help the user scale their Instagram account by automatically:
+
+1. Extracting viral moments from long YouTube videos
+2. Converting them into short-form reels
+3. Learning from past Instagram performance
+4. Generating optimized content strategies
+5. Suggesting scripts and creative ideas for future posts
+
+Format the entire response as a structured Markdown document.
+"""
+        
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            print(f"[GEMINI ERROR] Failed to generate advanced strategy: {e}")
+            return f"Failed to generate strategy: {e}"
