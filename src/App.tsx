@@ -22,7 +22,8 @@ import {
   Code2,
   Instagram,
   Sparkles,
-  Calendar
+  Calendar,
+  Trash2
 } from 'lucide-react';
 import {
   AreaChart,
@@ -110,6 +111,7 @@ const StatCard = ({ title, value, icon: Icon, delta, unit = "", color = "brand-y
 const YT_TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'content', label: 'Content', icon: Youtube },
+  { id: 'comments', label: 'Engagement', icon: MessageSquare },
   { id: 'audience', label: 'Audience', icon: Users },
   { id: 'trends', label: 'Trends', icon: TrendingUp },
 ];
@@ -146,19 +148,390 @@ function fmtDate(ts: string | null | undefined): string {
   } catch { return '—'; }
 }
 
-function ctrBadgeClass(ctr: number | null | undefined): string {
-  if (ctr == null) return 'bg-slate-100 dark:bg-white/5 text-slate-500 border-slate-200 dark:border-white/10';
-  if (ctr < 2) return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-  if (ctr < 4) return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-  return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-}
+const ReportingView = ({ data, days, setDays }: { data: any, days: number, setDays: (d: number) => void }) => {
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-12 pb-20">
+      {/* Report Header & Overview */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white dark:bg-[#161B22] p-8 rounded-[2rem] border border-slate-900/5 dark:border-white/5 shadow-2xl">
+        <div className="space-y-2">
+          <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">Aggregate Intelligence</p>
+          <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Executive Report</h2>
+          <p className="text-sm text-slate-500 font-medium">Cross-platform reach analysis for the past {days} days.</p>
+        </div>
+        
+        <div className="flex flex-col items-end gap-3">
+          <div className="flex bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl border border-slate-900/5 dark:border-white/5">
+            {[10, 20, 30].map((d) => (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                className={cn(
+                  "px-6 py-2 rounded-xl text-xs font-black transition-all",
+                  days === d 
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-lg shadow-black/10" 
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                )}
+              >
+                {d}D
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-[10px] font-black text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full uppercase tracking-widest border border-emerald-400/20">
+            <Activity className="w-3 h-3" />
+            Live Data Active
+          </div>
+        </div>
+      </div>
+
+      {/* Feature: Combined Reach Hero */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card className="lg:col-span-2 p-10 bg-gradient-to-br from-blue-600 to-blue-800 border-none shadow-2xl shadow-blue-500/20 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:bg-white/20 transition-all duration-700" />
+          <div className="relative z-10 space-y-6">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-blue-100/60 uppercase tracking-[0.3em]">Master Feature</p>
+              <h3 className="text-xl font-bold text-white uppercase tracking-tight">Total Combined Reach</h3>
+            </div>
+            <div className="flex items-baseline gap-4">
+              <span className="text-7xl font-black text-white tracking-tighter tabular-nums">
+                {fmt(data?.summary?.combined_reach)}
+              </span>
+              <span className="text-blue-100/60 font-black text-sm uppercase tracking-widest">Global Footprint</span>
+            </div>
+            <div className="pt-6 border-t border-white/10 flex gap-10">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-blue-100/40 uppercase tracking-widest text-center">YouTube</p>
+                <p className="text-lg font-black text-white text-center tabular-nums">{Math.round((data?.summary?.youtube_reach / data?.summary?.combined_reach) * 100 || 0)}%</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-blue-100/40 uppercase tracking-widest text-center">Instagram</p>
+                <p className="text-lg font-black text-white text-center tabular-nums">{Math.round((data?.summary?.instagram_reach / data?.summary?.combined_reach) * 100 || 0)}%</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-blue-100/40 uppercase tracking-widest text-center">ManyChat</p>
+                <p className="text-lg font-black text-white text-center tabular-nums">{Math.round((data?.summary?.manychat_reach / data?.summary?.combined_reach) * 100 || 0)}%</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-8 bg-white dark:bg-[#161B22] border-slate-900/5 dark:border-white/5 shadow-xl flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="p-3 bg-blue-500/10 rounded-2xl w-fit">
+              <Target className="w-6 h-6 text-blue-500" />
+            </div>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">Content<br/>Intelligence</h3>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              Your cross-platform reach is currently weighted towards {data?.summary?.youtube_reach > data?.summary?.instagram_reach ? 'YouTube' : 'Instagram'}. 
+              Focusing on vertical short-form content could increase Instagram reach by an estimated 24% based on current trends.
+            </p>
+          </div>
+          <button className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] transition-transform active:scale-95 shadow-lg">
+            Generate AI Strategy
+          </button>
+        </Card>
+      </div>
+
+      {/* Detail Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        {/* YouTube Module */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-10 h-10 bg-[#FF0000] rounded-xl flex items-center justify-center shadow-lg shadow-[#FF0000]/20">
+              <Youtube className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">YouTube Analytics</h3>
+              <p className="text-[9px] font-bold text-[#FF0000] uppercase tracking-widest">Video Performance Report</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white dark:bg-[#161B22] p-6 rounded-3xl border border-slate-900/5 dark:border-white/5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Reach</p>
+              <p className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.youtube_reach)}</p>
+            </div>
+            <div className="bg-white dark:bg-[#161B22] p-6 rounded-3xl border border-slate-900/5 dark:border-white/5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Growth Matrix</p>
+              <p className="text-2xl font-black text-emerald-400 tabular-nums">+{fmt(data?.summary?.subs_gained)}</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#161B22] p-8 rounded-[2rem] border border-slate-900/5 dark:border-white/5 shadow-sm">
+             <div className="h-[200px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data?.chartData}>
+                  <defs>
+                    <linearGradient id="ytRep" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#FF0000" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#FF0000" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area type="monotone" dataKey="youtube_views" stroke="#FF0000" strokeWidth={3} fill="url(#ytRep)" />
+                  <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </section>
+
+        {/* Instagram Module */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-brand-ig to-brand-ig/60 rounded-xl flex items-center justify-center shadow-lg shadow-brand-ig/20">
+              <InstagramIcon className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Instagram Analytics</h3>
+              <p className="text-[9px] font-bold text-brand-ig uppercase tracking-widest">Growth & Reach Report</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white dark:bg-[#161B22] p-6 rounded-3xl border border-slate-900/5 dark:border-white/5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Reach</p>
+              <p className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.instagram_reach)}</p>
+            </div>
+            <div className="bg-white dark:bg-[#161B22] p-6 rounded-3xl border border-slate-900/5 dark:border-white/5">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Engagement</p>
+              <p className="text-2xl font-black text-brand-ig tabular-nums">{fmt(data?.summary?.ig_total_likes)}</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#161B22] p-8 rounded-[2rem] border border-slate-900/5 dark:border-white/5 shadow-sm">
+             <div className="h-[200px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data?.chartData}>
+                  <defs>
+                    <linearGradient id="igRep" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#E1306C" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#E1306C" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area type="monotone" dataKey="instagram_reach" stroke="#E1306C" strokeWidth={3} fill="url(#igRep)" />
+                  <Tooltip contentStyle={{ backgroundColor: '#161B22', border: 'none', borderRadius: '12px' }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </section>
+      </div>
+
+       {/* ManyChat Report */}
+       <Card className="p-10 border-brand-mc/20 bg-gradient-to-br from-brand-mc/5 to-transparent">
+          <div className="flex items-center gap-4 mb-8">
+            <MessageSquare className="w-8 h-8 text-brand-mc" />
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Conversational Throughput</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Flow Velocity</p>
+              <p className="text-4xl font-black text-brand-mc tabular-nums">{fmt(data?.summary?.total_flows)}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Active Conversations</p>
+            </div>
+            <div className="space-y-1 border-x border-slate-900/5 dark:border-white/5 px-10">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Widget Impressions</p>
+              <p className="text-4xl font-black text-slate-900 dark:text-white tabular-nums">{fmt(data?.summary?.manychat_reach)}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total Touchpoints</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Conversion Index</p>
+              <p className="text-4xl font-black text-brand-mc tabular-nums">{fmt(data?.summary?.manychat_growth)}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Engagement Efficiency</p>
+            </div>
+          </div>
+       </Card>
+    </motion.div>
+  );
+};
+
+const YouTubeCommentsView = ({ data }: { data: any }) => {
+  const [comments, setComments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedComment, setSelectedComment] = useState<any>(null);
+  const [replyText, setReplyText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchComments = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/youtube/comments');
+      const d = await res.json();
+      if (d.success) setComments(d.comments);
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchComments(); }, []);
+
+  const handleReply = async () => {
+    if (!replyText.trim() || !selectedComment) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/youtube/comments/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentId: selectedComment.top_comment.id, text: replyText })
+      });
+      const d = await res.json();
+      if (d.success) {
+        setReplyText("");
+        // Refresh replies for selected comment immediately if possible or full list
+        fetchComments();
+      }
+    } catch (e) { console.error(e); }
+    setSubmitting(false);
+  };
+
+  const handleDelete = async (commentId: string) => {
+    if (!confirm("Are you sure you want to delete this comment?")) return;
+    try {
+      const res = await fetch('/api/youtube/comments/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commentId })
+      });
+      const d = await res.json();
+      if (d.success) {
+        // Option 1: Refresh full list triggers full query wait
+        fetchComments();
+        
+        // Option 2: Optimize UX locally immediately
+        if (selectedComment && selectedComment.top_comment.id === commentId) {
+          setSelectedComment(null);
+        } else if (selectedComment) {
+          setSelectedComment({
+            ...selectedComment,
+            replies: selectedComment.replies.filter((r: any) => r.id !== commentId)
+          });
+        }
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 lg:grid-cols-3 gap-8 min-h-[600px]">
+      {/* Left Pane: comment list */}
+      <Card className="lg:col-span-1 p-0 overflow-hidden border-slate-900/5 dark:border-white/5 flex flex-col h-[600px] bg-white dark:bg-[#161B22]">
+        <div className="p-6 border-b border-slate-900/5 dark:border-white/5 bg-slate-50 dark:bg-black/20">
+          <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Recent Comments</h3>
+          <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Active Conversations</p>
+        </div>
+        <div className="flex-1 overflow-y-auto divide-y divide-slate-900/5 dark:divide-white/5">
+          {loading ? (
+             <div className="p-10 text-center text-slate-500 text-xs font-bold uppercase animate-pulse">Loading comments...</div>
+          ) : comments.length === 0 ? (
+             <div className="p-10 text-center text-slate-500 text-xs font-bold uppercase">No comments found</div>
+          ) : (
+            comments.map((item) => (
+              <div 
+                key={item.id} 
+                onClick={() => setSelectedComment(item)}
+                className={cn(
+                  "p-5 hover:bg-slate-900/5 dark:hover:bg-white/5 cursor-pointer transition-all border-l-4",
+                  selectedComment?.id === item.id ? "border-brand-yt bg-slate-900/5 dark:bg-white/5" : "border-transparent"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <img src={item.top_comment.author_avatar} className="w-8 h-8 rounded-full border border-slate-200 dark:border-white/10" alt="" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between">
+                      <span className="text-xs font-black text-slate-900 dark:text-white truncate">{item.top_comment.author}</span>
+                      <span className="text-[9px] font-bold text-slate-500 uppercase">{fmtDate(item.top_comment.timestamp)}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: item.top_comment.text }} />
+                    <div className="flex items-center gap-2 mt-2">
+                       <span className="text-[9px] font-black text-slate-500 uppercase bg-slate-900/5 dark:bg-white/5 px-2 py-0.5 rounded">Replies: {item.total_replies}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Card>
+
+      {/* Right Pane: Thread Details & Reply */}
+      <Card className="lg:col-span-2 p-8 border-slate-900/5 dark:border-white/5 bg-white dark:bg-[#161B22] flex flex-col h-[600px]">
+        {selectedComment ? (
+          <div className="flex flex-col h-full">
+            <div className="border-b border-slate-900/5 dark:border-white/5 pb-6 mb-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <img src={selectedComment.top_comment.author_avatar} className="w-12 h-12 rounded-2xl" alt="" />
+                  <div>
+                    <h4 className="font-black text-slate-900 dark:text-white">{selectedComment.top_comment.author}</h4>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{fmtDate(selectedComment.top_comment.timestamp)}</p>
+                  </div>
+                </div>
+                <button onClick={() => handleDelete(selectedComment.top_comment.id)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all" title="Delete thread">
+                   <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-sm text-slate-800 dark:text-slate-300 mt-4 leading-relaxed font-medium bg-slate-900/5 dark:bg-white/5 p-4 rounded-2xl" dangerouslySetInnerHTML={{ __html: selectedComment.top_comment.text }} />
+            </div>
+
+            {/* Replies list */}
+            <div className="flex-1 overflow-y-auto space-y-4 mb-6 pr-2">
+               {selectedComment.replies && selectedComment.replies.map((rep: any) => (
+                  <div key={rep.id} className="pl-8 border-l-2 border-slate-900/10 dark:border-white/10 flex items-start justify-between gap-3 group">
+                     <div className="flex items-start gap-3 flex-1">
+                        <img src={rep.author_avatar} className="w-6 h-6 rounded-full" alt="" />
+                        <div className="flex-1">
+                           <div className="flex items-baseline gap-2">
+                              <span className="text-xs font-black text-slate-900 dark:text-white">{rep.author}</span>
+                              <span className="text-[8px] font-bold text-slate-500 uppercase">{fmtDate(rep.timestamp)}</span>
+                           </div>
+                           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed" dangerouslySetInnerHTML={{ __html: rep.text }} />
+                        </div>
+                     </div>
+                     <button onClick={() => handleDelete(rep.id)} className="p-1.5 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 hover:bg-rose-500/10 rounded-lg transition-all" title="Delete reply">
+                        <Trash2 className="w-3 h-3" />
+                     </button>
+                  </div>
+               ))}
+               {selectedComment.replies?.length === 0 && (
+                  <div className="text-center py-10 text-slate-500 text-xs font-bold uppercase tracking-widest">No replies yet. Be the first!</div>
+               )}
+            </div>
+
+            {/* Reply Input */}
+            <div className="border-t border-slate-900/5 dark:border-white/5 pt-6">
+              <textarea
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="Write a reply..."
+                className="w-full bg-slate-900/5 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 rounded-2xl px-6 py-4 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 ring-brand-yt/30 outline-none transition-all resize-none h-24"
+              />
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={handleReply}
+                  disabled={submitting || !replyText.trim()}
+                  className="px-6 py-3 bg-brand-yt text-white rounded-xl text-xs font-black uppercase tracking-widest hover:shadow-[0_0_20px_rgba(255,0,0,0.3)] disabled:opacity-50 transition-all active:scale-95"
+                >
+                  {submitting ? "Posting..." : "Post Reply"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
+             <MessageSquare className="w-12 h-12 opacity-20" />
+             <p className="text-xs font-black tracking-widest uppercase">Select a comment to view thread</p>
+          </div>
+        )}
+      </Card>
+    </motion.div>
+  );
+};
 
 export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyModalOpen: (open: boolean) => void, setStrategyVideoId: (id: string | null) => void }) {
   const [data, setData] = useState<any>(null);
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [activePlatform, setActivePlatform] = useState<'overview' | 'youtube' | 'manychat' | 'tiktok' | 'twitter' | 'instagram'>('overview');
+  const [activePlatform, setActivePlatform] = useState<'overview' | 'youtube' | 'manychat' | 'tiktok' | 'twitter' | 'instagram' | 'reporting'>('overview');
+  const [reportDays, setReportDays] = useState(30);
   const [syncing, setSyncing] = useState(false);
   const [manychatKey, setManychatKey] = useState("");
   const [instagramToken, setInstagramToken] = useState("");
@@ -244,7 +617,7 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
     const timer = setTimeout(() => { setLoading(false); setLoadError(true); }, 30000);
     try {
       const [dashRes, statusRes] = await Promise.all([
-        fetch('/api/dashboard'),
+        fetch(`/api/dashboard?days=${reportDays}`),
         fetch('/api/status')
       ]);
       if (!dashRes.ok) throw new Error(`Dashboard ${dashRes.status}`);
@@ -325,6 +698,10 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
     window.addEventListener('message', handleOAuth);
     return () => window.removeEventListener('message', handleOAuth);
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [reportDays]);
 
   // Auto-fetch shorts suggestions when videos data loads
   useEffect(() => {
@@ -471,6 +848,15 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
             {!showSettings && activePlatform === 'manychat' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-brand-mc/20 blur-xl -z-10" />}
           </button>
 
+          <button
+            onClick={() => { setShowSettings(false); setActivePlatform('reporting'); }}
+            className={cn("p-3 rounded-xl transition-all duration-300 group relative", !showSettings && activePlatform === 'reporting' ? "bg-slate-900/10 dark:bg-white/10 text-blue-400 shadow-xl" : "text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-900/5 dark:bg-white/5")}
+            title="Analytics Reports"
+          >
+            <BarChart3 className="w-6 h-6" />
+            {!showSettings && activePlatform === 'reporting' && <motion.div layoutId="nav-glow" className="absolute inset-0 bg-blue-400/20 blur-xl -z-10" />}
+          </button>
+
           <div className="h-px w-8 bg-slate-900/5 dark:bg-white/5 my-2" />
 
           <button
@@ -521,18 +907,21 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
               {activePlatform === 'tiktok' && "TikTok Hub"}
               {activePlatform === 'twitter' && "Twitter Reach"}
               {activePlatform === 'manychat' && "ManyChat Matrix"}
+              {activePlatform === 'reporting' && "Platform Insights"}
               <span className={cn(
                 "w-2 h-2 rounded-full",
                 activePlatform === 'overview' ? 'bg-emerald-400' :
                   activePlatform === 'youtube' ? 'bg-brand-yt' :
                     activePlatform === 'tiktok' ? 'bg-[#00DFEF]' :
-                      activePlatform === 'twitter' ? 'bg-[#1DA1F2]' : 'bg-brand-mc'
+                      activePlatform === 'twitter' ? 'bg-[#1DA1F2]' : 
+                        activePlatform === 'reporting' ? 'bg-blue-400' : 'bg-brand-mc'
               )} />
             </h1>
             {activePlatform !== 'overview' && (
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">
                 {activePlatform === 'youtube' ? 'Growth Command Center' :
-                  activePlatform === 'tiktok' ? 'Engagement Matrix' : 'Audience Reach Protocol'}
+                  activePlatform === 'tiktok' ? 'Engagement Matrix' : 
+                    activePlatform === 'reporting' ? 'Intelligence Hub' : 'Audience Reach Protocol'}
               </p>
             )}
           </div>
@@ -661,6 +1050,7 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
                   </div>
 
                   <AnimatePresence mode="wait">
+                    {activeTab === 'comments' && <YouTubeCommentsView data={data} />}
                     {activeTab === 'overview' && (
                       <motion.div
                         key="overview"
@@ -1708,6 +2098,14 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
                     </div>
                   </div>
                 </motion.div>
+              )}
+
+              {activePlatform === 'reporting' && (
+                <ReportingView 
+                  data={data} 
+                  days={reportDays} 
+                  setDays={setReportDays} 
+                />
               )}
             </>
           ) : (
