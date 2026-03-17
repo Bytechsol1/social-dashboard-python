@@ -148,33 +148,67 @@ function fmtDate(ts: string | null | undefined): string {
   } catch { return '—'; }
 }
 
-const ReportingView = ({ data, days, setDays }: { data: any, days: number, setDays: (d: number) => void }) => {
+const ReportingView = ({ data, days, setDays, startDate, setStartDate, endDate, setEndDate }: { 
+  data: any, 
+  days: number, 
+  setDays: (d: number) => void,
+  startDate: string,
+  setStartDate: (s: string) => void,
+  endDate: string,
+  setEndDate: (s: string) => void 
+}) => {
+  const lastLog = data?.logs?.[0];
+  const isYoutubeAuthFailed = lastLog && (lastLog.message?.includes('unauthorized_client') || lastLog.message?.includes('invalid_grant'));
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-12 pb-20">
+      {isYoutubeAuthFailed && (
+        <div className="bg-amber-500/10 border border-amber-500/10 p-5 rounded-3xl text-amber-500 text-xs font-black uppercase tracking-wider flex items-center gap-3 backdrop-blur-md">
+           <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+           <span>YouTube Connection Expired. Please Re-Connect Account in Settings to update data.</span>
+        </div>
+      )}
       {/* Report Header & Overview */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white dark:bg-[#161B22] p-8 rounded-[2rem] border border-slate-900/5 dark:border-white/5 shadow-2xl">
         <div className="space-y-2">
           <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">Aggregate Intelligence</p>
           <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Executive Report</h2>
-          <p className="text-sm text-slate-500 font-medium">Cross-platform reach analysis for the past {days} days.</p>
+          <p className="text-sm text-slate-500 font-medium">
+            {startDate && endDate 
+              ? `Cross-platform reach analysis from ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`
+              : `Cross-platform reach analysis for the past ${days} days.`}
+          </p>
         </div>
         
         <div className="flex flex-col items-end gap-3">
-          <div className="flex bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl border border-slate-900/5 dark:border-white/5">
-            {[10, 20, 30].map((d) => (
-              <button
-                key={d}
-                onClick={() => setDays(d)}
-                className={cn(
-                  "px-6 py-2 rounded-xl text-xs font-black transition-all",
-                  days === d 
-                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-lg shadow-black/10" 
-                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                )}
+          <div className="flex bg-slate-100 dark:bg-black/40 p-2 rounded-2xl border border-slate-900/5 dark:border-white/5 gap-3 items-center">
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-2">From:</span>
+              <input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)} 
+                className="bg-transparent text-xs font-black text-slate-900 dark:text-white outline-none focus:text-blue-500 transition-colors border-none p-1 w-[120px] cursor-pointer"
+              />
+            </div>
+            <div className="text-slate-400 font-bold">➔</div>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">To:</span>
+              <input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)} 
+                className="bg-transparent text-xs font-black text-slate-900 dark:text-white outline-none focus:text-blue-500 transition-colors border-none p-1 w-[120px] cursor-pointer"
+              />
+            </div>
+            {startDate && endDate && (
+              <button 
+                onClick={() => { setStartDate(""); setEndDate(""); }}
+                className="p-1.5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all ml-1"
+                title="Clear filter"
               >
-                {d}D
+                <X className="w-3.5 h-3.5" />
               </button>
-            ))}
+            )}
           </div>
           <div className="flex items-center gap-2 text-[10px] font-black text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full uppercase tracking-widest border border-emerald-400/20">
             <Activity className="w-3 h-3" />
@@ -532,6 +566,8 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
   const [loadError, setLoadError] = useState(false);
   const [activePlatform, setActivePlatform] = useState<'overview' | 'youtube' | 'manychat' | 'tiktok' | 'twitter' | 'instagram' | 'reporting'>('overview');
   const [reportDays, setReportDays] = useState(30);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [manychatKey, setManychatKey] = useState("");
   const [instagramToken, setInstagramToken] = useState("");
@@ -617,7 +653,7 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
     const timer = setTimeout(() => { setLoading(false); setLoadError(true); }, 30000);
     try {
       const [dashRes, statusRes] = await Promise.all([
-        fetch(`/api/dashboard?days=${reportDays}`),
+        fetch(`/api/dashboard?days=${reportDays}${startDate && endDate ? `&start_date=${startDate}&end_date=${endDate}` : ""}`),
         fetch('/api/status')
       ]);
       if (!dashRes.ok) throw new Error(`Dashboard ${dashRes.status}`);
@@ -701,7 +737,7 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
 
   useEffect(() => {
     fetchData();
-  }, [reportDays]);
+  }, [reportDays, startDate, endDate]);
 
   // Auto-fetch shorts suggestions when videos data loads
   useEffect(() => {
@@ -2105,6 +2141,10 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
                   data={data} 
                   days={reportDays} 
                   setDays={setReportDays} 
+                  startDate={startDate}
+                  setStartDate={setStartDate}
+                  endDate={endDate}
+                  setEndDate={setEndDate}
                 />
               )}
             </>

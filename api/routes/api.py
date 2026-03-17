@@ -267,6 +267,9 @@ async def trigger_sync(request: Request):
 async def get_dashboard_data(request: Request):
     user_id = _get_user_id(request)
     days = int(request.query_params.get("days", "30"))
+    start_date = request.query_params.get("start_date")
+    end_date = request.query_params.get("end_date")
+    
     storage = get_storage_engine()
     
     with get_db() as conn:
@@ -303,10 +306,13 @@ async def get_dashboard_data(request: Request):
 
         # Process metrics into chart format
         chart_map = {}
-        cutoff_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        cutoff_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d") if not (start_date and end_date) else None
         for r in rows:
             d = r["date"]
-            if d < cutoff_date:
+            if start_date and end_date:
+                if d < start_date or d > end_date:
+                    continue
+            elif cutoff_date and d < cutoff_date:
                 continue
             if d not in chart_map:
                 chart_map[d] = {
@@ -332,6 +338,8 @@ async def get_dashboard_data(request: Request):
             return next((r["value"] for r in reversed(rows) if r["metric_name"] == name and r["source"] == source), 0)
             
         def _sum(name, source="youtube", custom_days=None):
+            if start_date and end_date and custom_days is None:
+                return sum(r["value"] for r in rows if r["metric_name"] == name and r["source"] == source and start_date <= r["date"] <= end_date)
             target_days = custom_days if custom_days is not None else days
             cutoff = (datetime.now() - timedelta(days=target_days)).strftime("%Y-%m-%d")
             return sum(r["value"] for r in rows if r["metric_name"] == name and r["source"] == source and r["date"] >= cutoff)
@@ -490,13 +498,16 @@ async def get_shorts_suggestions(request: Request, video_id: str, force: bool = 
             if video:
                 video_title = video["title"] or ""
                 video_desc = video["description"] or ""
-                gemini = GeminiService()
-                new_suggs = await gemini.suggest_shorts_timestamps(video_title, video_desc)
-                for s in new_suggs:
-                    conn.execute(
-                        "INSERT INTO youtube_shorts_suggestions (user_id, video_id, start_time, stop_time, reason) VALUES (?, ?, ?, ?, ?)",
-                        (user_id, video_id, s["start_time"], s["stop_time"], s["reason"])
-                    )
+                try:
+                    gemini = GeminiService()
+                    new_suggs = await gemini.suggest_shorts_timestamps(video_title, video_desc)
+                    for s in new_suggs:
+                        conn.execute(
+                            "INSERT INTO youtube_shorts_suggestions (user_id, video_id, start_time, stop_time, reason) VALUES (?, ?, ?, ?, ?)",
+                            (user_id, video_id, s["start_time"], s["stop_time"], s["reason"])
+                        )
+                except Exception as e:
+                    print(f"[get_shorts_suggestions] Gemini suggesting failed: {e}")
                 suggestions = [dict(r) for r in conn.execute(
                     "SELECT * FROM youtube_shorts_suggestions WHERE user_id = ? AND video_id = ?", (user_id, video_id)
                 ).fetchall()]
