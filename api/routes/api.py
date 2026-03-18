@@ -294,9 +294,9 @@ async def get_dashboard_data(request: Request):
             "SELECT * FROM manychat_interactions WHERE user_id = ? ORDER BY timestamp DESC LIMIT 20", (user_id,)
         ).fetchall()]
 
-        # 5. YouTube Videos
+        # 5. YouTube Videos (Top 5 highest view counts)
         videos = [dict(r) for r in conn.execute(
-            "SELECT * FROM youtube_videos WHERE user_id = ? ORDER BY published_at DESC LIMIT 10", (user_id,)
+            "SELECT * FROM youtube_videos WHERE user_id = ? ORDER BY view_count DESC LIMIT 5", (user_id,)
         ).fetchall()]
 
         # 6. Instagram Media
@@ -327,6 +327,9 @@ async def get_dashboard_data(request: Request):
             if r["source"] == "youtube":
                 if r["metric_name"] == "views": chart_map[d]["youtube_views"] = r["value"]
                 if r["metric_name"] == "revenue": chart_map[d]["youtube_revenue"] = r["value"]
+                if r["metric_name"] == "subs_gained": chart_map[d]["youtube_subs_gained"] = r["value"]
+                if r["metric_name"] == "subs_lost": chart_map[d]["youtube_subs_lost"] = r["value"]
+                if r["metric_name"] == "watch_time_minutes": chart_map[d]["youtube_watch_time"] = r["value"]
             elif r["source"] == "manychat":
                 if r["metric_name"] == "manychat_subscribers": chart_map[d]["manychat_subscribers"] = r["value"]
             elif r["source"] == "instagram":
@@ -393,11 +396,20 @@ async def get_dashboard_data(request: Request):
         subscriber_trend = []
         
         # Get latest demographics
-        demo_rows = [dict(r) for r in conn.execute(
+        demo_rows_raw = [dict(r) for r in conn.execute(
             "SELECT metric_name, value, dimension FROM metrics WHERE user_id = ? AND source = 'youtube_demo' "
-            "AND date = (SELECT MAX(date) FROM metrics WHERE user_id = ? AND source = 'youtube_demo')",
-            (user_id, user_id)
+            "ORDER BY date DESC",
+            (user_id,)
         ).fetchall()]
+        
+        # Deduplicate to get latest for each metric_name+dimension pair
+        seen = set()
+        demo_rows = []
+        for dr in demo_rows_raw:
+            key = f"{dr['metric_name']}_{dr['dimension']}"
+            if key not in seen:
+                seen.add(key)
+                demo_rows.append(dr)
         
         for dr in demo_rows:
             if dr["metric_name"] == "viewerPercentage":
@@ -407,6 +419,25 @@ async def get_dashboard_data(request: Request):
         
         # Sort countries by views
         countries = sorted(countries, key=lambda x: x["views"], reverse=True)
+        
+        # Traffic Sources
+        traffic_sources = []
+        total_traffic_views = sum(dr["value"] for dr in demo_rows if dr["metric_name"] == "trafficSource")
+        for dr in demo_rows:
+            if dr["metric_name"] == "trafficSource":
+                pct = (dr["value"] / total_traffic_views * 100) if total_traffic_views > 0 else 0
+                label_map = {
+                    "SUGGESTED_VIDEO": "Suggested videos",
+                    "SEARCH": "YouTube search",
+                    "BROWSE": "Browse features",
+                    "CHANNEL_PAGE": "Channel pages",
+                    "EXTERNAL": "External",
+                    "OTHER_YOUTUBE_EMBEDDED": "Embedded players"
+                }
+                label = label_map.get(dr["dimension"], dr["dimension"].lower().replace("_", " ").capitalize())
+                traffic_sources.append({"label": label, "percent": round(pct, 1), "views": int(dr["value"])})
+        
+        traffic_sources = sorted(traffic_sources, key=lambda x: x["percent"], reverse=True)
         
         # Subscriber trend (last 30 days)
         trend_data = {}
@@ -438,6 +469,7 @@ async def get_dashboard_data(request: Request):
         demographics = {
             "ageGender": age_gender,
             "countries": countries,
+            "trafficSources": traffic_sources,
             "subscriberTrend": subscriber_trend,
             "instagram": ig_audience_formatted
         }
@@ -455,18 +487,29 @@ async def get_dashboard_data(request: Request):
         }
 
 @router.get("/youtube/ideas")
-async def get_youtube_ideas(request: Request):
+async def get_youtube_ideas(request: Request, force: bool = False):
     user_id = _get_user_id(request)
     
     with get_db() as conn:
+        if force:
+            conn.execute("DELETE FROM youtube_ideas WHERE user_id = ?", (user_id,))
+            
         ideas = [dict(r) for r in conn.execute(
             "SELECT * FROM youtube_ideas WHERE user_id = ? ORDER BY created_at DESC LIMIT 10", (user_id,)
         ).fetchall()]
     
     if not ideas:
-        # Generate new ideas if none exist
+        # Generate new ideas with context from recent videos to match the user's niche
+        with get_db() as conn:
+            recent_videos = conn.execute(
+                "SELECT title FROM youtube_videos WHERE user_id = ? ORDER BY published_at DESC LIMIT 5", (user_id,)
+            ).fetchall()
+            
+        titles = [v["title"] for v in recent_videos]
+        channel_context = f"The channel focuses on topics like: {', '.join(titles)}" if titles else ""
+        
         gemini = GeminiService()
-        new_ideas = await gemini.generate_video_ideas()
+        new_ideas = await gemini.generate_video_ideas(channel_context)
         
         with get_db() as conn:
             for idea in new_ideas:
@@ -494,10 +537,10 @@ async def get_shorts_suggestions(request: Request, video_id: str, force: bool = 
             ).fetchall()]
         
         if not suggestions:
-            video = conn.execute("SELECT title, description, id FROM youtube_videos WHERE id = ?", (video_id,)).fetchone()
+            video = conn.execute("SELECT title, id FROM youtube_videos WHERE id = ?", (video_id,)).fetchone()
             if video:
                 video_title = video["title"] or ""
-                video_desc = video["description"] or ""
+                video_desc = "" # Description not stored in DB
                 try:
                     gemini = GeminiService()
                     new_suggs = await gemini.suggest_shorts_timestamps(video_title, video_desc)

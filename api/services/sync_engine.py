@@ -117,20 +117,40 @@ def _sync_youtube_blocking(user_id: str, user: dict, refresh_token: str) -> str:
             try:
                 end_date = (datetime.now(timezone.utc) - timedelta(days=2)).strftime("%Y-%m-%d")
                 start_date = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d") # Go 90 days back in one query
+                # Query standard metrics (without Revenue to prevent 400 Bad Request on non-monetized channels)
                 report = yt_analy.reports().query(
                     ids=ids, startDate=start_date, endDate=end_date,
-                    metrics="views,estimatedRevenue,subscribersGained,subscribersLost,estimatedMinutesWatched,averageViewDuration,likes,comments,shares",
+                    metrics="views,subscribersGained,subscribersLost,estimatedMinutesWatched,averageViewDuration,likes,comments,shares",
                     dimensions="day", sort="day"
                 ).execute()
 
                 rows = report.get("rows") or []
-                metric_names = ["views", "revenue", "subs_gained", "subs_lost", "watch_time_minutes", "avg_view_duration", "likes", "comments", "shares"]
+                metric_names = ["views", "subs_gained", "subs_lost", "watch_time_minutes", "avg_view_duration", "likes", "comments", "shares"]
                 
+                # Fetch Revenue separately
+                revenue_map = {}
+                try:
+                    rev_report = yt_analy.reports().query(
+                        ids=ids, startDate=start_date, endDate=end_date,
+                        metrics="estimatedRevenue", dimensions="day"
+                    ).execute()
+                    for rr in (rev_report.get("rows") or []):
+                        revenue_map[rr[0]] = float(rr[1] or 0)
+                except Exception as re:
+                    print(f"[SYNC] YouTube Revenue query skipped: {re}")
+
                 for row_data in rows:
                     date_val = row_data[0]
                     metrics_batch = {}
                     for i, name in enumerate(metric_names):
                         metrics_batch[name] = float(row_data[i + 1] or 0)
+                    
+                    # Merge revenue if exists
+                    if date_val in revenue_map:
+                        metrics_batch["revenue"] = revenue_map[date_val]
+                    else:
+                        metrics_batch["revenue"] = 0.0
+                        
                     _batch_upsert_metrics(conn, user_id, date_val, "youtube", metrics_batch)
             except Exception as e: print(f"[SYNC] YouTube Analytics block failed: {e}")
 
@@ -145,6 +165,11 @@ def _sync_youtube_blocking(user_id: str, user: dict, refresh_token: str) -> str:
                 country_report = yt_analy.reports().query(ids=ids, startDate=start_dt, endDate=end_dt, metrics="views", dimensions="country", sort="-views", maxResults=10).execute()
                 for r in (country_report.get("rows") or []):
                     _batch_upsert_metrics(conn, user_id, today, "youtube_demo", {"countryViews": float(r[1])}, dimension=r[0])
+                    
+                # Traffic Sources
+                traffic_report = yt_analy.reports().query(ids=ids, startDate=start_dt, endDate=end_dt, metrics="views", dimensions="insightTrafficSourceType", sort="-views").execute()
+                for r in (traffic_report.get("rows") or []):
+                    _batch_upsert_metrics(conn, user_id, today, "youtube_demo", {"trafficSource": float(r[1])}, dimension=r[0])
             except Exception as de: print(f"[SYNC] YouTube demographics skipped: {de}")
 
             # 1d. Recent Videos
@@ -157,8 +182,16 @@ def _sync_youtube_blocking(user_id: str, user: dict, refresh_token: str) -> str:
                         v_ids = [i["contentDetails"]["videoId"] for i in items.get("items", [])]
                         print(f"[SYNC] Found {len(v_ids)} video IDs: {v_ids}")
                         if v_ids:
-                            v_stats = youtube.videos().list(id=",".join(v_ids), part="snippet,statistics").execute()
+                            v_stats = youtube.videos().list(id=",".join(v_ids), part="snippet,statistics,contentDetails").execute()
                             for v in v_stats.get("items", []):
+                                duration_str = v.get("contentDetails", {}).get("duration", "")
+                                seconds = _parse_duration_to_seconds(duration_str)
+                                
+                                # Skip videos under 2 minutes (120 seconds) - treating them as Shorts
+                                if 0 < seconds < 122:
+                                    print(f"[SYNC] Skipping Short ({seconds}s): {v['id']} - {v['snippet']['title']}")
+                                    continue
+                                    
                                 print(f"[SYNC] Upserting video: {v['id']} - {v['snippet']['title']}")
                                 _upsert_video_conn(conn, user_id, {
                                     "id": v["id"], "title": v["snippet"]["title"], "published_at": v["snippet"]["publishedAt"],
@@ -278,6 +311,34 @@ async def _sync_instagram(user_id: str, user: dict) -> str:
     except Exception as e:
         print(f"[SYNC] Instagram Failure: {e}")
         return f"failed: {e}"
+
+def _parse_duration_to_seconds(duration_str: str) -> int:
+    """Parse ISO 8601 duration string (e.g., PT1M30S) to seconds."""
+    if not duration_str:
+        return 0
+    import re
+    match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', duration_str)
+    if not match:
+        return 0
+    h, m, s = match.groups()
+    hours = int(h) if h else 0
+    minutes = int(m) if m else 0
+    seconds = int(s) if s else 0
+    return hours * 3600 + minutes * 60 + seconds
+
+def _parse_duration_to_seconds(duration_str: str) -> int:
+    """Parse ISO 8601 duration string (e.g., PT1M30S) to seconds."""
+    if not duration_str:
+        return 0
+    import re
+    match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', duration_str)
+    if not match:
+        return 0
+    h, m, s = match.groups()
+    hours = int(h) if h else 0
+    minutes = int(m) if m else 0
+    seconds = int(s) if s else 0
+    return hours * 3600 + minutes * 60 + seconds
 
 # --- Internal Database Helpers (Connection Reusing) ---
 

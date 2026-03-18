@@ -1211,12 +1211,14 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
                             <Card className="p-6">
                               <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight mb-8">How viewers find your videos</h3>
                               <div className="space-y-6">
-                                {[
-                                  { label: 'Browse features', percent: 33.3 },
-                                  { label: 'Channel pages', percent: 33.3 },
-                                  { label: 'Suggested videos', percent: 33.3 },
-                                  { label: 'YouTube search', percent: 0.1 }
-                                ].map(source => (
+                                {(data?.demographics?.trafficSources && data.demographics.trafficSources.length > 0 
+                                  ? data.demographics.trafficSources 
+                                  : [
+                                    { label: 'Browse features', percent: 33.3 },
+                                    { label: 'Channel pages', percent: 33.3 },
+                                    { label: 'Suggested videos', percent: 33.3 },
+                                    { label: 'YouTube search', percent: 0.1 }
+                                  ]).slice(0, 5).map((source: any) => (
                                   <div key={source.label} className="flex items-center justify-between text-sm">
                                     <span className="font-bold text-slate-600 dark:text-slate-300">{source.label}</span>
                                     <div className="flex items-center gap-4 w-1/2">
@@ -1665,7 +1667,7 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
                               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-5">
                                 Based on: video title · description · engagement patterns
                               </p>
-                              <div className="space-y-3">
+                              <div className="space-y-3 max-h-[460px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10">
                                 {Object.values(ytShortsSuggestions).flat().length > 0 ? (
                                   Object.values(ytShortsSuggestions).flat().slice(0, 6).map((seg: any, i: number) => (
                                     <div key={i} className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 space-y-2">
