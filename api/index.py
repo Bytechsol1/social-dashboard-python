@@ -126,12 +126,16 @@ def on_startup():
         init_db()
         print("[BOOT] Database initialized successfully.")
         
-        # Start the background scheduler
-        try:
-            from api.services.scheduler import start_scheduler
-            start_scheduler()
-        except Exception as e:
-            print(f"[BOOT ERROR] Scheduler failed to start: {e}")
+        # Start the background scheduler (Skip on Vercel Serverless)
+        if not os.environ.get("VERCEL"):
+            try:
+                from api.services.scheduler import start_scheduler
+                start_scheduler()
+                print("[BOOT] Background scheduler started.")
+            except Exception as e:
+                print(f"[BOOT ERROR] Scheduler failed to start: {e}")
+        else:
+            print("[BOOT] Skipping background scheduler on Vercel Serverless.")
             
     except Exception as e:
         print(f"[BOOT ERROR] Database initialization failed: {e}")
@@ -139,11 +143,12 @@ def on_startup():
 @app.on_event("shutdown")
 def on_shutdown():
     """Stop the scheduler on shutdown."""
-    try:
-        from api.services.scheduler import stop_scheduler
-        stop_scheduler()
-    except Exception as e:
-        print(f"[BOOT ERROR] Scheduler failed to stop: {e}")
+    if not os.environ.get("VERCEL"):
+        try:
+            from api.services.scheduler import stop_scheduler
+            stop_scheduler()
+        except Exception as e:
+            print(f"[BOOT ERROR] Scheduler failed to stop: {e}")
 
 if __name__ == "__main__":
     import uvicorn
