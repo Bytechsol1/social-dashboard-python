@@ -37,3 +37,7 @@ typing_extensions==4.15.0
 uritemplate==4.2.0
 urllib3==2.6.3
 pg8000==1.31.2
+google-generativeai
+apscheduler==3.10.4
+supabase==2.10.0
+python-multipart==0.0.7
