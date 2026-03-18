@@ -307,6 +307,28 @@ async def get_dashboard_data(request: Request):
         # Process metrics into chart format
         chart_map = {}
         cutoff_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d") if not (start_date and end_date) else None
+        
+        # Build a daily views delta from total_views snapshots (Data API = accurate)
+        total_views_by_date = {}
+        for r in rows:
+            if r["source"] == "youtube" and r["metric_name"] == "total_views":
+                total_views_by_date[r["date"]] = r["value"]
+        
+        sorted_tv_dates = sorted(total_views_by_date.keys())
+        daily_views_delta = {}
+        for i, d in enumerate(sorted_tv_dates):
+            if i == 0:
+                daily_views_delta[d] = 0  # first point has no delta
+            else:
+                prev_d = sorted_tv_dates[i - 1]
+                delta = total_views_by_date[d] - total_views_by_date[prev_d]
+                current_total = total_views_by_date[d]
+                # Filter reconnection spikes: if delta > 10% of total it's a new account connection, not growth
+                if current_total > 0 and delta / current_total > 0.10:
+                    daily_views_delta[d] = 0  # skip spike — new account connected
+                else:
+                    daily_views_delta[d] = max(delta, 0)
+
         for r in rows:
             d = r["date"]
             if start_date and end_date:
@@ -317,7 +339,7 @@ async def get_dashboard_data(request: Request):
             if d not in chart_map:
                 chart_map[d] = {
                     "date": d, 
-                    "youtube_views": 0, 
+                    "youtube_views": daily_views_delta.get(d, 0), 
                     "youtube_revenue": 0, 
                     "manychat_subscribers": 0, 
                     "instagram_followers": 0,
@@ -325,7 +347,6 @@ async def get_dashboard_data(request: Request):
                 }
             
             if r["source"] == "youtube":
-                if r["metric_name"] == "views": chart_map[d]["youtube_views"] = r["value"]
                 if r["metric_name"] == "revenue": chart_map[d]["youtube_revenue"] = r["value"]
                 if r["metric_name"] == "subs_gained": chart_map[d]["youtube_subs_gained"] = r["value"]
                 if r["metric_name"] == "subs_lost": chart_map[d]["youtube_subs_lost"] = r["value"]
@@ -352,6 +373,15 @@ async def get_dashboard_data(request: Request):
         ig_reach = _sum("total_reach", source="instagram")
         mc_reach = _sum("manychat_active_widgets", source="manychat")
 
+        # Watch time: use analytics sum if meaningful; otherwise estimate from avg_view_duration × total_views
+        raw_watch = _sum("watch_time_minutes")
+        if raw_watch < 100:  # Analytics API broken/token invalid — estimate from Data API totals
+            avg_dur_secs = _latest("avg_view_duration") or 0
+            total_v = _latest("total_views") or 0
+            estimated_watch = int(avg_dur_secs * total_v / 60)
+        else:
+            estimated_watch = int(raw_watch)
+
         summary = {
             # YouTube Specific
             "youtube_subscribers":    _latest("total_subscribers"),
@@ -364,7 +394,7 @@ async def get_dashboard_data(request: Request):
             "subscribers":            _latest("total_subscribers"),
             "total_views":            _latest("total_views"),
             "revenue":                _sum("revenue"),
-            "watch_time_minutes":     _sum("watch_time_minutes"),
+            "watch_time_minutes":     estimated_watch,
             "avg_duration":           _latest("avg_view_duration"),
             "total_videos":           _latest("total_videos"),
             "subs_gained":            _sum("subs_gained"),

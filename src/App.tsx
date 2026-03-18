@@ -23,7 +23,8 @@ import {
   Instagram,
   Sparkles,
   Calendar,
-  Trash2
+  Trash2,
+  LogOut
 } from 'lucide-react';
 import {
   AreaChart,
@@ -42,6 +43,8 @@ import { twMerge } from 'tailwind-merge';
 
 import { AIStrategyModal } from './components/AIStrategyModal';
 import { InstagramScheduler } from './components/InstagramScheduler';
+import LoginPage from './LoginPage';
+import { supabase } from './supabaseClient';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -912,6 +915,13 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
           >
             {theme === 'dark' ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
           </button>
+          <button
+            onClick={() => { localStorage.removeItem('dashboard_auth'); window.location.reload(); }}
+            className="p-3 rounded-xl bg-slate-900/5 dark:bg-white/5 text-rose-400 hover:bg-rose-500/10 transition-all border border-transparent hover:border-rose-500/20"
+            title="Logout"
+          >
+            <LogOut className="w-6 h-6" />
+          </button>
         </div>
 
         {/* Mobile Theme Toggle */}
@@ -1213,12 +1223,7 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
                               <div className="space-y-6">
                                 {(data?.demographics?.trafficSources && data.demographics.trafficSources.length > 0 
                                   ? data.demographics.trafficSources 
-                                  : [
-                                    { label: 'Browse features', percent: 33.3 },
-                                    { label: 'Channel pages', percent: 33.3 },
-                                    { label: 'Suggested videos', percent: 33.3 },
-                                    { label: 'YouTube search', percent: 0.1 }
-                                  ]).slice(0, 5).map((source: any) => (
+                                  : []).slice(0, 5).map((source: any) => (
                                   <div key={source.label} className="flex items-center justify-between text-sm">
                                     <span className="font-bold text-slate-600 dark:text-slate-300">{source.label}</span>
                                     <div className="flex items-center gap-4 w-1/2">
@@ -2343,7 +2348,12 @@ export function App({ setStrategyModalOpen, setStrategyVideoId }: { setStrategyM
 export default function AppWrapper() {
   const [strategyModalOpen, setStrategyModalOpen] = useState(false);
   const [strategyVideoId, setStrategyVideoId] = useState<string | null>(null);
+  const [isAuthed, setIsAuthed] = useState<boolean>(() => localStorage.getItem('dashboard_auth') === 'true');
 
+  // Not logged in — show login page
+  if (!isAuthed) return <LoginPage onLogin={() => setIsAuthed(true)} />;
+
+  // Logged in — show dashboard
   return (
     <>
       <App setStrategyModalOpen={setStrategyModalOpen} setStrategyVideoId={setStrategyVideoId} />
